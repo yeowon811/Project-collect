@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 제어 센터</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <!-- 꺾은선 그래프 렌더링을 위한 Chart.js 라이브러리 추가 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg: #0b0f19;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+            --gold: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 16px;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+            .btn:hover {
+                opacity: 0.9;
+            }
+
+        .btn-danger {
+            background: var(--danger);
+        }
+
+        .btn-success {
+            background: var(--success);
+        }
+
+        .btn-undo {
+            background: #64748b;
+        }
+
+        input, select {
+            background: #0f172a;
+            border: 1px solid var(--card-border);
+            color: var(--text);
+            padding: 8px 10px;
+            border-radius: 6px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid var(--card-border);
+            text-align: left;
+        }
+
+        #admin-lock {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .badge-done {
+            background: #065f46;
+            color: #34d399;
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .badge-wait {
+            background: #78350f;
+            color: #fbbf24;
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .badge-multiplier {
+            background: #312e81;
+            color: #a5b4fc;
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .rank-record-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(15, 23, 42, 0.6);
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--card-border);
+        }
+
+        /* 꺾은선 차트 컨테이너 */
+        .chart-box {
+            position: relative;
+            width: 100%;
+            height: 340px;
+            margin-top: 14px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 비밀번호 잠금 화면 -->
+    <div id="admin-lock">
+        <div class="card" style="text-align: center; width: 320px;">
+            <h2 style="margin-bottom: 15px;">🔒 관리자 인증</h2>
+            <input type="password" id="pin-input" placeholder="비밀번호 입력 (기본: 1234)" style="width: 100%; margin-bottom: 10px;" onkeydown="if(event.key==='Enter') unlockAdmin()">
+            <button class="btn" style="width: 100%;" onclick="unlockAdmin()">입장하기</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+            <h2>⚙️ 스코어보드 관리자 콘솔</h2>
+            <div>
+                <button class="btn btn-undo" onclick="undoState()">↩ 되돌리기 (Undo)</button>
+                <button class="btn btn-danger" onclick="resetData()">데이터 전체 리셋</button>
+            </div>
+        </header>
+
+        <!-- 상단 실시간 모니터링 축약 뷰 -->
+        <div class="card" style="border-color: var(--primary);">
+            <h3>📊 실시간 현황 모니터링 (사용자 화면 동기화 중)</h3>
+            <div id="live-ranking-bar" style="margin-top: 10px; font-weight: 600; color: var(--gold); line-height: 1.6;">-</div>
+        </div>
+
+        <!-- 점수 배점 설정 -->
+        <div class="card">
+            <h3>등수별 기본 획득 점수 규칙</h3>
+            <div style="display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
+                <label>🥇 1등: <input type="number" id="rule-p1" style="width: 80px;"></label>
+                <label>🥈 2등: <input type="number" id="rule-p2" style="width: 80px;"></label>
+                <label>🥉 3등: <input type="number" id="rule-p3" style="width: 80px;"></label>
+                <button class="btn" onclick="saveRules()">규칙 저장</button>
+            </div>
+        </div>
+
+        <!-- 게임별 순위 선정 및 일괄 합산 -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                    <h3>게임별 순위 및 기록 관리 (일괄 합산)</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">* 팀 선택과 기록은 즉시 동기화됩니다. 종목별 가중치가 적용된 점수가 합산됩니다.</p>
+                </div>
+                <button class="btn btn-success" onclick="batchCalculateScores()">⚡ 미반영 게임 점수 일괄합산</button>
+            </div>
+            <div id="game-selection-list" style="margin-top: 12px;"></div>
+        </div>
+
+        <!-- 추가/감점 즉시 반영 -->
+        <div class="card">
+            <h3>추가 점수 / 감점 부여</h3>
+            <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
+                <select id="quick-team"></select>
+                <input type="number" id="quick-pts" placeholder="점수 (+50 또는 -30)">
+                <button class="btn" onclick="applyQuickScore()">점수 즉시 반영</button>
+            </div>
+        </div>
+
+        <!-- 조 및 게임 관리 그리드 -->
+        <div class="grid-2">
+            <div class="card">
+                <h3>조(팀) 관리</h3>
+                <div style="display: flex; gap: 6px; margin: 10px 0;">
+                    <input type="text" id="new-team-name" placeholder="신규 팀명" style="flex: 1;" onkeydown="if(event.key==='Enter') addTeam()">
+                    <button class="btn" onclick="addTeam()">추가</button>
+                </div>
+                <table id="team-table"><tbody></tbody></table>
+            </div>
+
+            <div class="card">
+                <h3>게임 및 가중치 관리</h3>
+                <div style="display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap;">
+                    <input type="text" id="new-game-name" placeholder="신규 게임명" style="flex: 2;" onkeydown="if(event.key==='Enter') addGame()">
+                    <input type="number" id="new-game-multiplier" placeholder="가중치" value="1.0" step="0.1" min="0" style="flex: 1; min-width: 80px;">
+                    <button class="btn" onclick="addGame()">추가</button>
+                </div>
+                <table id="game-table">
+                    <thead>
+                        <tr style="color: var(--text-muted); font-size: 0.85rem;">
+                            <th>게임명</th>
+                            <th style="width: 90px;">가중치(배율)</th>
+                            <th style="width: 60px;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ================= 📈 신규: 조별 점수 변동 추이 꺾은선 그래프 (맨 아래 배치) ================= -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
+                <div>
+                    <h3>📈 조별 점수 변동 추이 (꺾은선 그래프)</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">점수 합산 또는 수동 기록 시점마다 점수 추이가 저장됩니다.</p>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn" onclick="recordSnapshotManual()">📸 현재 점수 기록 (스냅샷)</button>
+                    <button class="btn btn-undo" onclick="resetHistory()">기록 초기화</button>
+                </div>
+            </div>
+            <div class="chart-box">
+                <canvas id="scoreLineChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyDdW4Nu4mCgOoF2152ZImcgb-v6wp-hiiI",
+            authDomain: "adult-scoreboard.firebaseapp.com",
+            databaseURL: "https://adult-scoreboard-default-rtdb.firebaseio.com",
+            projectId: "adult-scoreboard",
+            storageBucket: "adult-scoreboard.firebasestorage.app",
+            messagingSenderId: "941156687343",
+            appId: "1:941156687343:web:31c344c0110c59d62d2a1a",
+            measurementId: "G-NGBSSPGHDG"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const defaultState = {
+            rules: { p1: 100, p2: 70, p3: 40 },
+            teams: [
+                { id: 1, name: "1조", score: 0 },
+                { id: 2, name: "2조", score: 0 },
+                { id: 3, name: "3조", score: 0 },
+                { id: 4, name: "4조", score: 0 }
+            ],
+            games: [
+                { id: 1, name: "줄다리기", multiplier: 1.0, rank1: null, rank2: null, rank3: null, record1: "", record2: "", record3: "", calculated: false }
+            ],
+            history: [
+                {
+                    label: "시작",
+                    scores: { "1": 0, "2": 0, "3": 0, "4": 0 }
+                }
+            ]
+        };
+
+        let currentState = null;
+        let backupState = null;
+        let scoreChart = null;
+
+        // 팀별 고유 그래프 색상 팔레트
+        const teamColors = [
+            '#10b981', '#38bdf8', '#f59e0b', '#a855f7',
+            '#f43f5e', '#14b8a6', '#eab308', '#ec4899', '#6366f1'
+        ];
+
+        function toArray(data) {
+            if (!data) return [];
+            return Array.isArray(data) ? data : Object.values(data);
+        }
+
+        function unlockAdmin() {
+            if (document.getElementById('pin-input').value === '1234') {
+                document.getElementById('admin-lock').style.display = 'none';
+            } else {
+                alert("비밀번호가 올바르지 않습니다.");
+            }
+        }
+
+        // 실시간 구독
+        db.ref('scoreboard').on('value', (snapshot) => {
+            const val = snapshot.val();
+            if (!val) {
+                db.ref('scoreboard').set(defaultState);
+                return;
+            }
+            currentState = {
+                rules: val.rules || { p1: 100, p2: 70, p3: 40 },
+                teams: toArray(val.teams),
+                games: toArray(val.games).map(g => ({
+                    ...g,
+                    multiplier: g.multiplier !== undefined ? Number(g.multiplier) : 1.0
+                })),
+                history: toArray(val.history)
+            };
+
+            // 히스토리가 비어있으면 초기값 생성
+            if (!currentState.history || currentState.history.length === 0) {
+                const initScores = {};
+                currentState.teams.forEach(t => { initScores[t.id] = Number(t.score) || 0; });
+                currentState.history = [{ label: "시작", scores: initScores }];
+            }
+
+            renderAdmin();
+            renderChart();
+        });
+
+        function updateDB(createUndo = false) {
+            if (createUndo && currentState) {
+                backupState = JSON.parse(JSON.stringify(currentState));
+            }
+            db.ref('scoreboard').set(currentState);
+        }
+
+        function undoState() {
+            if (!backupState) return alert("되돌릴 이전 작업 내역이 없습니다.");
+            currentState = JSON.parse(JSON.stringify(backupState));
+            backupState = null;
+            db.ref('scoreboard').set(currentState);
+            alert("이전 상태로 되돌렸습니다.");
+        }
+
+        // 점수 히스토리 스냅샷 추가 함수
+        function addHistorySnapshot(labelName) {
+            if (!currentState) return;
+            if (!currentState.history) currentState.history = [];
+
+            const snapshotScores = {};
+            currentState.teams.forEach(t => {
+                snapshotScores[t.id] = Number(t.score) || 0;
+            });
+
+            const now = new Date();
+            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            const label = labelName || timeStr;
+
+            currentState.history.push({
+                label: label,
+                scores: snapshotScores
+            });
+        }
+
+        function recordSnapshotManual() {
+            if (!currentState) return;
+            const label = prompt("기록할 스냅샷 이름을 입력하세요 (미입력 시 현재 시각으로 저장):");
+            addHistorySnapshot(label && label.trim() ? label.trim() : null);
+            updateDB();
+            alert("현재 점수 상태가 그래프에 저장되었습니다.");
+        }
+
+        function resetHistory() {
+            if (!confirm("변동 추이 그래프 기록을 초기화하고 현재 점수를 시작점으로 설정하시겠습니까?")) return;
+            const initScores = {};
+            currentState.teams.forEach(t => { initScores[t.id] = Number(t.score) || 0; });
+            currentState.history = [{ label: "시작", scores: initScores }];
+            updateDB();
+        }
+
+        // 꺾은선 차트 렌더링
+        function renderChart() {
+            if (!currentState) return;
+            const ctx = document.getElementById('scoreLineChart').getContext('2d');
+            const history = currentState.history || [];
+            const teams = currentState.teams || [];
+
+            const labels = history.map(h => h.label || '기록');
+
+            // 조별 데이터셋 매핑
+            const datasets = teams.map((team, idx) => {
+                const color = teamColors[idx % teamColors.length];
+                const data = history.map(h => {
+                    if (h.scores && h.scores[team.id] !== undefined) {
+                        return Number(h.scores[team.id]) || 0;
+                    }
+                    return null; // 해당 시점에 팀이 없었으면 null
+                });
+
+                return {
+                    label: team.name,
+                    data: data,
+                    borderColor: color,
+                    backgroundColor: color,
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.15, // 완만한 꺾은선
+                    spanGaps: true
+                };
+            });
+
+            if (scoreChart) {
+                scoreChart.data.labels = labels;
+                scoreChart.data.datasets = datasets;
+                scoreChart.update();
+            } else {
+                scoreChart = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                labels: { color: '#f8fafc', font: { size: 12, weight: '600' } }
+                            },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleColor: '#f8fafc',
+                                bodyColor: '#cbd5e1',
+                                borderColor: '#334155',
+                                borderWidth: 1
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#94a3b8' },
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                            },
+                            y: {
+                                ticks: { color: '#94a3b8' },
+                                grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderAdmin() {
+            if (!currentState) return;
+            const teams = currentState.teams || [];
+            const games = currentState.games || [];
+            const rules = currentState.rules;
+
+            // 1. 실시간 모니터링 바
+            const sorted = [...teams].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+            document.getElementById('live-ranking-bar').innerHTML = sorted.length > 0
+                ? sorted.map((t, idx) => `${idx + 1}위: <strong>${t.name}</strong> (${(Number(t.score) || 0).toLocaleString()}P)`).join(' | ')
+                : '등록된 팀이 없습니다.';
+
+            // 2. 점수 규칙 세팅
+            document.getElementById('rule-p1').value = rules.p1;
+            document.getElementById('rule-p2').value = rules.p2;
+            document.getElementById('rule-p3').value = rules.p3;
+
+            // 3. 즉시 점수 부여 드롭다운
+            const quickSelect = document.getElementById('quick-team');
+            quickSelect.innerHTML = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+            // 4. 팀 관리 테이블
+            document.querySelector('#team-table tbody').innerHTML = teams.map(t => `
+                    <tr>
+                        <td><input type="text" value="${t.name}" onchange="editTeamName('${t.id}', this.value)" style="width: 90%;"></td>
+                        <td style="font-weight: bold; color: var(--gold);">${(Number(t.score) || 0).toLocaleString()} P</td>
+                        <td><button class="btn btn-danger" onclick="deleteTeam('${t.id}')">삭제</button></td>
+                    </tr>
+                `).join('');
+
+            // 5. 게임 및 가중치 관리 테이블
+            document.querySelector('#game-table tbody').innerHTML = games.map(g => `
+                    <tr>
+                        <td><input type="text" value="${g.name}" onchange="editGameName('${g.id}', this.value)" style="width: 90%;"></td>
+                        <td><input type="number" step="0.1" min="0" value="${g.multiplier ?? 1.0}" onchange="editGameMultiplier('${g.id}', this.value)" style="width: 70px;"></td>
+                        <td><button class="btn btn-danger" onclick="deleteGame('${g.id}')">삭제</button></td>
+                    </tr>
+                `).join('');
+
+            // 6. 게임별 순위 드롭다운 & 기록 인풋 세팅
+            const buildOptions = (selectedId) => {
+                let opts = `<option value="">--선택 안됨--</option>`;
+                teams.forEach(t => {
+                    const isSelected = String(t.id) === String(selectedId) ? 'selected' : '';
+                    opts += `<option value="${t.id}" ${isSelected}>${t.name}</option>`;
+                });
+                return opts;
+            };
+
+            document.getElementById('game-selection-list').innerHTML = games.map(g => {
+                const isDone = g.calculated;
+                const mult = Number(g.multiplier) || 1.0;
+                const p1 = Math.round(rules.p1 * mult);
+                const p2 = Math.round(rules.p2 * mult);
+                const p3 = Math.round(rules.p3 * mult);
+
+                return `
+                        <div style="border: 1px solid var(--card-border); padding: 14px; border-radius: 8px; margin-bottom: 12px; background: rgba(255,255,255,0.01);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <strong style="font-size: 1.05rem;">🎮 ${g.name}</strong>
+                                    <span class="badge-multiplier">가중치 ${mult}x (1등:${p1}P / 2등:${p2}P / 3등:${p3}P)</span>
+                                </div>
+                                ${isDone ? '<span class="badge-done">점수 반영 완료</span>' : '<span class="badge-wait">점수 미반영</span>'}
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
+                                <div class="rank-record-group">
+                                    <span>🥇 1위:</span>
+                                    <select onchange="setGameRank('${g.id}', 'rank1', this.value)" style="flex: 1;">${buildOptions(g.rank1)}</select>
+                                    <input type="text" placeholder="기록(예: 10.5초)" value="${g.record1 || ''}" onchange="setGameRecord('${g.id}', 'record1', this.value)" style="width: 110px;">
+                                </div>
+                                <div class="rank-record-group">
+                                    <span>🥈 2위:</span>
+                                    <select onchange="setGameRank('${g.id}', 'rank2', this.value)" style="flex: 1;">${buildOptions(g.rank2)}</select>
+                                    <input type="text" placeholder="기록" value="${g.record2 || ''}" onchange="setGameRecord('${g.id}', 'record2', this.value)" style="width: 110px;">
+                                </div>
+                                <div class="rank-record-group">
+                                    <span>🥉 3위:</span>
+                                    <select onchange="setGameRank('${g.id}', 'rank3', this.value)" style="flex: 1;">${buildOptions(g.rank3)}</select>
+                                    <input type="text" placeholder="기록" value="${g.record3 || ''}" onchange="setGameRecord('${g.id}', 'record3', this.value)" style="width: 110px;">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+            }).join('');
+        }
+
+        /* 관리 액션 로직 */
+        function saveRules() {
+            currentState.rules = {
+                p1: Number(document.getElementById('rule-p1').value) || 0,
+                p2: Number(document.getElementById('rule-p2').value) || 0,
+                p3: Number(document.getElementById('rule-p3').value) || 0
+            };
+            updateDB();
+            alert("점수 규칙이 저장되었습니다.");
+        }
+
+        function setGameRank(gameId, rankKey, value) {
+            const g = currentState.games.find(item => String(item.id) === String(gameId));
+            if (g) {
+                g[rankKey] = value ? value : null;
+                g.calculated = false; // 순위 변경 시 미반영 상태로 전환
+                updateDB();
+            }
+        }
+
+        function setGameRecord(gameId, recordKey, value) {
+            const g = currentState.games.find(item => String(item.id) === String(gameId));
+            if (g) {
+                g[recordKey] = value ? value.trim() : "";
+                updateDB();
+            }
+        }
+
+        function batchCalculateScores() {
+            const uncalculated = currentState.games.filter(g => !g.calculated && (g.rank1 || g.rank2 || g.rank3));
+            if (uncalculated.length === 0) {
+                return alert("새롭게 합산할 미반영 게임 결과가 없습니다.");
+            }
+
+            if (!confirm(`총 ${uncalculated.length}개의 미반영 게임 결과를 가중치를 적용하여 점수에 합산하시겠습니까?`)) return;
+            updateDB(true);
+
+            const rules = currentState.rules;
+            let gameNames = [];
+
+            uncalculated.forEach(g => {
+                gameNames.push(g.name);
+                const mult = Number(g.multiplier) || 1.0;
+                const applyRankScore = (rankId, pts) => {
+                    if (!rankId) return;
+                    const t = currentState.teams.find(x => String(x.id) === String(rankId));
+                    if (t) {
+                        t.score = (Number(t.score) || 0) + Math.round(pts * mult);
+                    }
+                };
+
+                applyRankScore(g.rank1, rules.p1);
+                applyRankScore(g.rank2, rules.p2);
+                applyRankScore(g.rank3, rules.p3);
+                g.calculated = true;
+            });
+
+            // 점수 합산 완료 시 변동 추이 스냅샷 자동 저장
+            addHistorySnapshot(gameNames.join(', ') + ' 반영');
+
+            updateDB();
+            alert("가중치가 반영된 일괄 점수 합산이 완료되었습니다 (그래프에 기록됨).");
+        }
+
+        function applyQuickScore() {
+            const tid = document.getElementById('quick-team').value;
+            const pts = Number(document.getElementById('quick-pts').value);
+            if (!tid) return alert("팀을 먼저 등록하거나 선택하세요.");
+            if (isNaN(pts) || pts === 0) return alert("유효한 점수를 입력하세요.");
+
+            updateDB(true);
+            const t = currentState.teams.find(x => String(x.id) === String(tid));
+            if (t) {
+                t.score = (Number(t.score) || 0) + pts;
+                document.getElementById('quick-pts').value = '';
+
+                // 추가/감점 반영 시 변동 추이 스냅샷 자동 저장
+                addHistorySnapshot(`${t.name} (${pts > 0 ? '+' : ''}${pts}P)`);
+
+                updateDB();
+                alert(`${t.name}에 ${pts}점이 반영되었습니다 (그래프에 기록됨).`);
+            }
+        }
+
+        function addTeam() {
+            const input = document.getElementById('new-team-name');
+            const val = input.value.trim();
+            if (!val) return;
+            currentState.teams.push({ id: String(Date.now()), name: val, score: 0 });
+            input.value = '';
+            updateDB();
+        }
+
+        function editTeamName(id, name) {
+            const t = currentState.teams.find(x => String(x.id) === String(id));
+            if (t) {
+                t.name = name.trim();
+                updateDB();
+            }
+        }
+
+        function deleteTeam(id) {
+            if (!confirm("해당 팀을 삭제하시겠습니까?")) return;
+            updateDB(true);
+            currentState.teams = currentState.teams.filter(x => String(x.id) !== String(id));
+            updateDB();
+        }
+
+        function addGame() {
+            const inputName = document.getElementById('new-game-name');
+            const inputMult = document.getElementById('new-game-multiplier');
+            const val = inputName.value.trim();
+            const mult = parseFloat(inputMult.value) || 1.0;
+            if (!val) return;
+
+            currentState.games.push({
+                id: String(Date.now()),
+                name: val,
+                multiplier: mult,
+                rank1: null,
+                rank2: null,
+                rank3: null,
+                record1: "",
+                record2: "",
+                record3: "",
+                calculated: false
+            });
+            inputName.value = '';
+            inputMult.value = '1.0';
+            updateDB();
+        }
+
+        function editGameName(id, name) {
+            const g = currentState.games.find(x => String(x.id) === String(id));
+            if (g) {
+                g.name = name.trim();
+                updateDB();
+            }
+        }
+
+        function editGameMultiplier(id, mult) {
+            const g = currentState.games.find(x => String(x.id) === String(id));
+            if (g) {
+                const parsed = parseFloat(mult);
+                g.multiplier = isNaN(parsed) || parsed < 0 ? 1.0 : parsed;
+                updateDB();
+            }
+        }
+
+        function deleteGame(id) {
+            if (!confirm("해당 게임을 삭제하시겠습니까?")) return;
+            updateDB(true);
+            currentState.games = currentState.games.filter(x => String(x.id) !== String(id));
+            updateDB();
+        }
+
+        function resetData() {
+            if (!confirm("정말 모든 데이터를 기본값으로 초기화하시겠습니까? 이 작업은 이전 상태로 되돌릴 수 있습니다.")) return;
+            updateDB(true);
+            currentState = JSON.parse(JSON.stringify(defaultState));
+            updateDB();
+        }
+    </script>
+</body>
+</html>
