@@ -606,6 +606,24 @@
                 color: #fff;
             }
 
+        .btn-gear {
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: var(--text-sub);
+            padding: 4px 6px;
+            line-height: 1;
+        }
+
+            .btn-gear:hover {
+                color: var(--text-main);
+            }
+
+            .btn-gear.active-mode {
+                color: var(--text-main);
+            }
+
         .file-label {
             padding: 6px 16px;
             background-color: transparent;
@@ -810,6 +828,15 @@
         }
 
             .job-btn-word:hover {
+                border-color: var(--text-main);
+            }
+
+            .job-btn-word.empty {
+                opacity: 0.55;
+            }
+
+            .job-btn-word.has-file {
+                opacity: 1;
                 border-color: var(--text-main);
             }
 
@@ -1060,6 +1087,7 @@
                 <h1>RECRUITMENT CALENDAR</h1>
             </div>
             <div class="controls">
+                <button class="btn-gear" id="jobFileSettingsToggleBtn" title="자소서 파일 수정/삭제 설정 토글">⚙</button>
                 <button class="btn" id="openAddJobModalBtn">+ ADD JOB</button>
                 <button class="btn btn-danger" id="toggleDeleteModeBtn">DELETE</button>
                 <button class="btn btn-warning" id="resetAllBtn">RESET</button>
@@ -1109,7 +1137,7 @@
             </div>
             <div class="form-group">
                 <label for="newJobLink">회사명 클릭 이동 링크</label>
-                <input type="text" id="newJobLink" placeholder="www.naver.com">
+                <input type="text" id="newJobLink" placeholder="[www.naver.com](https://www.naver.com)">
             </div>
             <div class="modal-actions">
                 <button class="btn" id="closeAddJobModalBtn">CANCEL</button>
@@ -1147,7 +1175,7 @@
 
             <div class="form-group" id="quickLinkInputGroup">
                 <label for="modalQuickLink">바로가기 하이퍼링크</label>
-                <input type="text" id="modalQuickLink" placeholder="www.saramin.co.kr">
+                <input type="text" id="modalQuickLink" placeholder="[www.saramin.co.kr](https://www.saramin.co.kr)">
             </div>
 
             <div class="modal-actions">
@@ -1225,6 +1253,7 @@
         let currentDate = new Date(2026, 8, 1);
         let activeCustomId = null;
         let isDeleteMode = false;
+        let isJobFileEditMode = false; // [추가] 자소서 파일 수정/삭제 톱니바퀴 모드
         let selectedJobIdsToDelete = new Set();
         let profileDebounceTimer = null;
 
@@ -1286,15 +1315,20 @@
         /* 0. 브라우저 영구 대용량 저장소(IndexedDB) 모듈 */
         const IDB_NAME = "RecruitCalendarDB";
         const IDB_STORE = "cert_files";
+        const JOB_FILES_STORE = "job_files"; // [추가] 공고별 자소서/이력서 파일 저장용 스토어
+        const IDB_VERSION = 2; // [수정] job_files 스토어 추가로 버전 상향
         let idbInstance = null;
 
         function initIDB() {
             return new Promise((resolve) => {
-                const req = indexedDB.open(IDB_NAME, 1);
+                const req = indexedDB.open(IDB_NAME, IDB_VERSION);
                 req.onupgradeneeded = (e) => {
                     const idb = e.target.result;
                     if (!idb.objectStoreNames.contains(IDB_STORE)) {
                         idb.createObjectStore(IDB_STORE, { keyPath: "id" });
+                    }
+                    if (!idb.objectStoreNames.contains(JOB_FILES_STORE)) {
+                        idb.createObjectStore(JOB_FILES_STORE, { keyPath: "id" });
                     }
                 };
                 req.onsuccess = (e) => {
@@ -1305,33 +1339,34 @@
             });
         }
 
-        function saveFileToIDB(fileId, fileBlob, fileName) {
+        // [수정] storeName 파라미터를 받아 자격증/공고 파일 스토어를 모두 지원하도록 일반화
+        function saveFileToIDB(fileId, fileBlob, fileName, storeName = IDB_STORE) {
             return new Promise((resolve) => {
                 if (!idbInstance) return resolve(false);
-                const tx = idbInstance.transaction(IDB_STORE, "readwrite");
-                const store = tx.objectStore(IDB_STORE);
+                const tx = idbInstance.transaction(storeName, "readwrite");
+                const store = tx.objectStore(storeName);
                 store.put({ id: fileId, file: fileBlob, name: fileName, date: Date.now() });
                 tx.oncomplete = () => resolve(true);
                 tx.onerror = () => resolve(false);
             });
         }
 
-        function getFileFromIDB(fileId) {
+        function getFileFromIDB(fileId, storeName = IDB_STORE) {
             return new Promise((resolve) => {
                 if (!idbInstance) return resolve(null);
-                const tx = idbInstance.transaction(IDB_STORE, "readonly");
-                const store = tx.objectStore(IDB_STORE);
+                const tx = idbInstance.transaction(storeName, "readonly");
+                const store = tx.objectStore(storeName);
                 const req = store.get(fileId);
                 req.onsuccess = () => resolve(req.result || null);
                 req.onerror = () => resolve(null);
             });
         }
 
-        function deleteFileFromIDB(fileId) {
+        function deleteFileFromIDB(fileId, storeName = IDB_STORE) {
             return new Promise((resolve) => {
                 if (!idbInstance) return resolve(true);
-                const tx = idbInstance.transaction(IDB_STORE, "readwrite");
-                const store = tx.objectStore(IDB_STORE);
+                const tx = idbInstance.transaction(storeName, "readwrite");
+                const store = tx.objectStore(storeName);
                 store.delete(fileId);
                 tx.oncomplete = () => resolve(true);
                 tx.onerror = () => resolve(false);
@@ -1409,6 +1444,26 @@
                 }
             } catch (err) {
                 console.warn("Storage 클라우드 백업 제외 (로컬 저장소 유지):", err.message);
+            }
+        }
+
+        // [추가] 공고별 첨부 파일(자소서/이력서 등)을 Firebase Storage에 비동기 업로드
+        async function tryUploadJobFileToStorage(jobId, file) {
+            try {
+                const safeId = jobId.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                const fileRef = ref(storage, `job_docs/${safeId}_${safeName}`);
+                await uploadBytes(fileRef, file);
+                const downloadUrl = await getDownloadURL(fileRef);
+
+                const jobIndex = jobsData.findIndex(j => getJobIdentifier(j) === jobId);
+                if (jobIndex !== -1) {
+                    jobsData[jobIndex].fileUrl = downloadUrl;
+                    persistJobs(jobsData, true);
+                    renderCalendar();
+                }
+            } catch (err) {
+                console.warn("공고 파일 클라우드 백업 제외 (로컬 저장소 유지):", err.message);
             }
         }
 
@@ -1522,11 +1577,11 @@
                 }
 
                 rowHtml += `
-                        <span class="cert-col cert-col-name" title="${item.name || ''}">${item.name || '-'}</span>
-                        <span class="cert-col cert-col-sub" title="${item.number || ''}">${item.number || '-'}</span>
-                        <span class="cert-col cert-col-sub" title="${item.date || ''}">${item.date || '-'}</span>
-                        <span class="cert-col cert-col-sub" title="${item.org || ''}">${item.org || '-'}</span>
-                    `;
+                            <span class="cert-col cert-col-name" title="${item.name || ''}">${item.name || '-'}</span>
+                            <span class="cert-col cert-col-sub" title="${item.number || ''}">${item.number || '-'}</span>
+                            <span class="cert-col cert-col-sub" title="${item.date || ''}">${item.date || '-'}</span>
+                            <span class="cert-col cert-col-sub" title="${item.org || ''}">${item.org || '-'}</span>
+                        `;
 
                 const hasFile = !!(item.fileUrl || item.hasLocalFile);
                 let fileControlsHtml = '';
@@ -1535,42 +1590,42 @@
                 if (isCertEditMode) {
                     if (hasFile) {
                         fileControlsHtml = `
-                                <button type="button" class="cert-file-btn has-file"
-                                        title="증명서 열기 (${item.fileName || '파일'})"
-                                        data-index="${index}">📁</button>
-                                <button type="button" class="cert-file-sub-btn cert-file-change-btn" title="증명서 파일 변경/재업로드" data-index="${index}">↺</button>
-                                <button type="button" class="cert-file-sub-btn cert-file-del-btn" style="color:var(--danger-color);" title="첨부 파일 삭제" data-index="${index}">✕</button>
-                            `;
+                                    <button type="button" class="cert-file-btn has-file"
+                                            title="증명서 열기 (${item.fileName || '파일'})"
+                                            data-index="${index}">📁</button>
+                                    <button type="button" class="cert-file-sub-btn cert-file-change-btn" title="증명서 파일 변경/재업로드" data-index="${index}">↺</button>
+                                    <button type="button" class="cert-file-sub-btn cert-file-del-btn" style="color:var(--danger-color);" title="첨부 파일 삭제" data-index="${index}">✕</button>
+                                `;
                     } else {
                         fileControlsHtml = `
-                                <button type="button" class="cert-file-btn empty"
-                                        title="클릭하여 증명서 파일 첨부"
-                                        data-index="${index}">📁</button>
-                            `;
+                                    <button type="button" class="cert-file-btn empty"
+                                            title="클릭하여 증명서 파일 첨부"
+                                            data-index="${index}">📁</button>
+                                `;
                     }
                 } else {
                     // 평상시: 파일 열람 전용 (수정 버튼 비활성화)
                     if (hasFile) {
                         fileControlsHtml = `
-                                <button type="button" class="cert-file-btn has-file"
-                                        title="증명서 열기 (${item.fileName || '파일'})"
-                                        data-index="${index}">📁</button>
-                            `;
+                                    <button type="button" class="cert-file-btn has-file"
+                                            title="증명서 열기 (${item.fileName || '파일'})"
+                                            data-index="${index}">📁</button>
+                                `;
                     } else {
                         fileControlsHtml = `
-                                <button type="button" class="cert-file-btn empty"
-                                        title="등록된 증명서 없음 (파일을 추가하려면 ⚙ 설정을 누르세요)"
-                                        data-index="${index}" style="opacity: 0.25;">📁</button>
-                            `;
+                                    <button type="button" class="cert-file-btn empty"
+                                            title="등록된 증명서 없음 (파일을 추가하려면 ⚙ 설정을 누르세요)"
+                                            data-index="${index}" style="opacity: 0.25;">📁</button>
+                                `;
                     }
                 }
 
                 rowHtml += `
-                        <div style="display:inline-flex; align-items:center; gap:3px; flex-shrink:0;">
-                            ${fileControlsHtml}
-                            <input type="file" class="row-file-input hidden-input" data-index="${index}" accept="image/*,.pdf">
-                        </div>
-                    `;
+                            <div style="display:inline-flex; align-items:center; gap:3px; flex-shrink:0;">
+                                ${fileControlsHtml}
+                                <input type="file" class="row-file-input hidden-input" data-index="${index}" accept="image/*,.pdf">
+                            </div>
+                        `;
 
                 if (isCertEditMode) {
                     rowHtml += `<button class="spec-delete-btn" title="자격증 항목 삭제" data-index="${index}">✕</button>`;
@@ -1821,12 +1876,12 @@
                 const detailSpan = item.detail ? `<span class="spec-detail-text">(${item.detail})</span>` : '';
 
                 badge.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="color: var(--text-sub);">-</span>
-                            <span>${item.name} ${detailSpan}</span>
-                        </div>
-                        <button class="spec-delete-btn" title="삭제" data-index="${index}">✕</button>
-                    `;
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="color: var(--text-sub);">-</span>
+                                <span>${item.name} ${detailSpan}</span>
+                            </div>
+                            <button class="spec-delete-btn" title="삭제" data-index="${index}">✕</button>
+                        `;
 
                 badge.querySelector('.spec-delete-btn').addEventListener('click', () => {
                     deleteLang(index);
@@ -1921,11 +1976,11 @@
                 const row = document.createElement('div');
                 row.className = 'activity-item-row';
                 row.innerHTML = `
-                        <span class="activity-col-name" title="${act.name || ''}">${act.name || '-'}</span>
-                        <span class="activity-col-period" title="${act.period || ''}">${act.period || '-'}</span>
-                        <span class="activity-col-desc" title="${act.desc || ''}">${act.desc || '-'}</span>
-                        <button class="spec-delete-btn" title="삭제" data-index="${index}">✕</button>
-                    `;
+                            <span class="activity-col-name" title="${act.name || ''}">${act.name || '-'}</span>
+                            <span class="activity-col-period" title="${act.period || ''}">${act.period || '-'}</span>
+                            <span class="activity-col-desc" title="${act.desc || ''}">${act.desc || '-'}</span>
+                            <button class="spec-delete-btn" title="삭제" data-index="${index}">✕</button>
+                        `;
 
                 row.querySelector('.spec-delete-btn').addEventListener('click', () => {
                     deleteActivity(index);
@@ -2000,6 +2055,75 @@
 
         jobsData = getSavedJobs();
 
+        // [추가] Blob을 실제 파일 다운로드로 트리거하는 헬퍼
+        function triggerBlobDownload(blob, fileName) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName || 'document';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        // [추가] 공고에 자소서/이력서 등 파일을 첨부 (증명서 첨부와 동일한 방식: 로컬 IndexedDB 저장 + 클라우드 업로드)
+        async function handleJobFileUpload(jobId, file) {
+            await saveFileToIDB(jobId, file, file.name, JOB_FILES_STORE);
+
+            const jobIndex = jobsData.findIndex(j => getJobIdentifier(j) === jobId);
+            if (jobIndex === -1) return;
+
+            jobsData[jobIndex].hasLocalFile = true;
+            jobsData[jobIndex].fileName = file.name;
+            jobsData[jobIndex].fileUrl = '';
+
+            persistJobs(jobsData);
+            renderCalendar();
+
+            tryUploadJobFileToStorage(jobId, file);
+        }
+
+        // [추가] 첨부된 공고 파일을 다운로드 (클라우드 URL 우선, 없으면 로컬 IndexedDB에서)
+        async function downloadJobFile(job) {
+            const jobId = getJobIdentifier(job);
+            const downloadName = job.fileName || `${job.company}_자소서`;
+
+            if (job.fileUrl && job.fileUrl.startsWith('http')) {
+                try {
+                    const resp = await fetch(job.fileUrl);
+                    const blob = await resp.blob();
+                    triggerBlobDownload(blob, downloadName);
+                    return;
+                } catch (err) {
+                    console.warn('클라우드 파일 다운로드 실패, 로컬 파일로 대체 시도:', err);
+                }
+            }
+
+            const record = await getFileFromIDB(jobId, JOB_FILES_STORE);
+            if (record && record.file) {
+                triggerBlobDownload(record.file, record.name || downloadName);
+                return;
+            }
+
+            alert('첨부된 파일을 찾을 수 없습니다.');
+        }
+
+        // [추가] 공고에 첨부된 파일 삭제
+        async function deleteJobFile(job) {
+            const jobId = getJobIdentifier(job);
+            await deleteFileFromIDB(jobId, JOB_FILES_STORE);
+
+            const jobIndex = jobsData.findIndex(j => getJobIdentifier(j) === jobId);
+            if (jobIndex !== -1) {
+                jobsData[jobIndex].hasLocalFile = false;
+                jobsData[jobIndex].fileUrl = '';
+                delete jobsData[jobIndex].fileName;
+                persistJobs(jobsData);
+            }
+            renderCalendar();
+        }
+
         document.getElementById('jsonFileInput').addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -2048,10 +2172,13 @@
             return `${year}-${month}-${day}`;
         }
 
-        function openOrCreateWordDocument(companyName) {
-            const encodedCompany = encodeURIComponent(companyName);
-            window.location.href = `myword://${encodedCompany}`;
-        }
+        // [추가] 자소서 파일 수정/삭제 톱니바퀴 토글 (CERTIFICATES의 ⚙ 설정과 동일한 방식)
+        const jobFileSettingsToggleBtn = document.getElementById('jobFileSettingsToggleBtn');
+        jobFileSettingsToggleBtn.addEventListener('click', () => {
+            isJobFileEditMode = !isJobFileEditMode;
+            jobFileSettingsToggleBtn.classList.toggle('active-mode', isJobFileEditMode);
+            renderCalendar();
+        });
 
         const toggleDeleteBtn = document.getElementById('toggleDeleteModeBtn');
         toggleDeleteBtn.addEventListener('click', () => {
@@ -2153,7 +2280,15 @@
             }
 
             const link = rawLink ? normalizeUrl(rawLink) : '';
-            const newJob = { company: compName, endDate: endDate, link: link };
+            // [수정] 파일 첨부/다운로드 기능을 위한 필드 초기화
+            const newJob = {
+                company: compName,
+                endDate: endDate,
+                link: link,
+                fileUrl: '',
+                fileName: '',
+                hasLocalFile: false
+            };
             jobsData.push(newJob);
             persistJobs(jobsData);
 
@@ -2234,15 +2369,77 @@
                     const actionsEl = document.createElement('div');
                     actionsEl.className = 'job-actions';
 
+                    // [수정] W 버튼: myword:// 프로토콜 연결 대신, 자격증처럼 파일을 직접 첨부하고
+                    // 이후에는 클릭 시 그 파일을 다운로드하는 방식으로 변경
+                    const hasJobFile = !!(job.fileUrl || job.hasLocalFile);
+
                     const wordBtn = document.createElement('button');
-                    wordBtn.className = 'job-btn job-btn-word';
-                    wordBtn.title = `${job.company} 자소서 Word 파일 자동 열기/생성`;
+                    wordBtn.className = 'job-btn job-btn-word' + (hasJobFile ? ' has-file' : ' empty');
                     wordBtn.textContent = 'W';
+                    wordBtn.title = hasJobFile
+                        ? `자소서 파일 다운로드 (${job.fileName || '파일'})`
+                        : (isJobFileEditMode
+                            ? `${job.company} 자소서 파일 첨부하기`
+                            : '파일을 첨부하려면 상단의 ⚙(설정) 버튼을 먼저 눌러주세요.');
+
+                    const jobFileInput = document.createElement('input');
+                    jobFileInput.type = 'file';
+                    jobFileInput.className = 'hidden-input';
+                    jobFileInput.accept = '.doc,.docx,.hwp,.hwpx,.pdf,.txt';
+                    jobFileInput.addEventListener('click', (e) => e.stopPropagation());
+                    jobFileInput.addEventListener('change', async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        wordBtn.textContent = '⏳';
+                        await handleJobFileUpload(jobId, file);
+                    });
+
                     wordBtn.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        openOrCreateWordDocument(job.company);
+                        if (hasJobFile) {
+                            // 파일이 등록되어 있으면 언제든 다운로드 가능
+                            downloadJobFile(job);
+                        } else if (isJobFileEditMode) {
+                            // 파일이 없을 때: 톱니바퀴 설정 모드에서만 파일 선택창 열림
+                            jobFileInput.click();
+                        } else {
+                            alert('파일을 첨부하려면 상단의 ⚙(설정) 버튼을 먼저 눌러주세요.');
+                        }
                     });
+
+                    actionsEl.appendChild(wordBtn);
+
+                    // [수정] 파일 변경/삭제 버튼은 ⚙ 설정(isJobFileEditMode)이 켜져 있을 때만 노출
+                    if (hasJobFile && isJobFileEditMode) {
+                        const changeFileBtn = document.createElement('button');
+                        changeFileBtn.className = 'cert-file-sub-btn';
+                        changeFileBtn.title = '자소서 파일 변경/재업로드';
+                        changeFileBtn.textContent = '↺';
+                        changeFileBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            jobFileInput.click();
+                        });
+
+                        const delFileBtn = document.createElement('button');
+                        delFileBtn.className = 'cert-file-sub-btn';
+                        delFileBtn.style.color = 'var(--danger-color)';
+                        delFileBtn.title = '첨부 파일 삭제';
+                        delFileBtn.addEventListener('click', async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (confirm(`'${job.company}'에 첨부된 파일을 삭제하시겠습니까?`)) {
+                                await deleteJobFile(job);
+                            }
+                        });
+                        delFileBtn.textContent = '✕';
+
+                        actionsEl.appendChild(changeFileBtn);
+                        actionsEl.appendChild(delFileBtn);
+                    }
+
+                    actionsEl.appendChild(jobFileInput);
 
                     const editBtn = document.createElement('button');
                     editBtn.className = 'job-btn';
@@ -2254,7 +2451,6 @@
                         openCustomModal(job, jobId, jobCustom);
                     });
 
-                    actionsEl.appendChild(wordBtn);
                     actionsEl.appendChild(editBtn);
                     jobEl.appendChild(actionsEl);
 
@@ -2412,7 +2608,23 @@
                     }
 
                     if (Array.isArray(cloudData.jobs)) {
-                        jobsData = cloudData.jobs;
+                        // [수정] 자격증과 동일하게, 로컬에만 있는 파일 첨부 상태(hasLocalFile)가
+                        // 클라우드 업로드 완료 전에 덮어써지지 않도록 병합
+                        const localJobs = jobsData;
+                        const mergedJobs = cloudData.jobs.map(cloudJob => {
+                            const cloudJobId = getJobIdentifier(cloudJob);
+                            const localJob = localJobs.find(l => getJobIdentifier(l) === cloudJobId);
+                            if (localJob && localJob.hasLocalFile && !cloudJob.fileUrl) {
+                                return {
+                                    ...cloudJob,
+                                    hasLocalFile: true,
+                                    fileName: cloudJob.fileName || localJob.fileName
+                                };
+                            }
+                            return cloudJob;
+                        });
+
+                        jobsData = mergedJobs;
                         localStorage.setItem(JOBS_STORAGE_KEY, JSON.stringify(jobsData));
                     }
                     if (cloudData.customizations) {
