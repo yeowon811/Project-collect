@@ -2055,18 +2055,6 @@
 
         jobsData = getSavedJobs();
 
-        // [추가] Blob을 실제 파일 다운로드로 트리거하는 헬퍼
-        function triggerBlobDownload(blob, fileName) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName || 'document';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-        }
-
         // [추가] 공고에 자소서/이력서 등 파일을 첨부 (증명서 첨부와 동일한 방식: 로컬 IndexedDB 저장 + 클라우드 업로드)
         async function handleJobFileUpload(jobId, file) {
             await saveFileToIDB(jobId, file, file.name, JOB_FILES_STORE);
@@ -2084,25 +2072,20 @@
             tryUploadJobFileToStorage(jobId, file);
         }
 
-        // [추가] 첨부된 공고 파일을 다운로드 (클라우드 URL 우선, 없으면 로컬 IndexedDB에서)
-        async function downloadJobFile(job) {
-            const jobId = getJobIdentifier(job);
-            const downloadName = job.fileName || `${job.company}_자소서`;
-
+        // [수정] 첨부된 공고 파일 열기: fileUrl이 있으면 새 탭에서 그 링크로 바로 접속한다.
+        // 아직 클라우드 업로드가 끝나지 않아 fileUrl이 없으면 로컬(IndexedDB)에 저장된 파일을
+        // 새 탭에서 연다.
+        async function openJobFile(job) {
             if (job.fileUrl && job.fileUrl.startsWith('http')) {
-                try {
-                    const resp = await fetch(job.fileUrl);
-                    const blob = await resp.blob();
-                    triggerBlobDownload(blob, downloadName);
-                    return;
-                } catch (err) {
-                    console.warn('클라우드 파일 다운로드 실패, 로컬 파일로 대체 시도:', err);
-                }
+                window.open(job.fileUrl, '_blank');
+                return;
             }
 
+            const jobId = getJobIdentifier(job);
             const record = await getFileFromIDB(jobId, JOB_FILES_STORE);
             if (record && record.file) {
-                triggerBlobDownload(record.file, record.name || downloadName);
+                const objectUrl = URL.createObjectURL(record.file);
+                window.open(objectUrl, '_blank');
                 return;
             }
 
@@ -2370,14 +2353,14 @@
                     actionsEl.className = 'job-actions';
 
                     // [수정] W 버튼: myword:// 프로토콜 연결 대신, 자격증처럼 파일을 직접 첨부하고
-                    // 이후에는 클릭 시 그 파일을 다운로드하는 방식으로 변경
+                    // 이후에는 클릭 시 fileUrl 링크로 바로 접속하는 방식으로 변경
                     const hasJobFile = !!(job.fileUrl || job.hasLocalFile);
 
                     const wordBtn = document.createElement('button');
                     wordBtn.className = 'job-btn job-btn-word' + (hasJobFile ? ' has-file' : ' empty');
                     wordBtn.textContent = 'W';
                     wordBtn.title = hasJobFile
-                        ? `자소서 파일 다운로드 (${job.fileName || '파일'})`
+                        ? `자소서 파일 열기 (${job.fileName || '파일'})`
                         : (isJobFileEditMode
                             ? `${job.company} 자소서 파일 첨부하기`
                             : '파일을 첨부하려면 상단의 ⚙(설정) 버튼을 먼저 눌러주세요.');
@@ -2398,8 +2381,8 @@
                         e.preventDefault();
                         e.stopPropagation();
                         if (hasJobFile) {
-                            // 파일이 등록되어 있으면 언제든 다운로드 가능
-                            downloadJobFile(job);
+                            // 파일이 등록되어 있으면 언제든 fileUrl 링크로 접속 가능
+                            openJobFile(job);
                         } else if (isJobFileEditMode) {
                             // 파일이 없을 때: 톱니바퀴 설정 모드에서만 파일 선택창 열림
                             jobFileInput.click();
