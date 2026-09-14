@@ -1428,30 +1428,6 @@
             alert("첨부된 증명서 파일을 찾을 수 없습니다.");
         }
 
-        // [추가] Storage 업로드 실패 사유를 사람이 읽을 수 있는 한국어 메시지로 변환
-        function describeStorageError(err) {
-            const code = err && err.code;
-            if (code === 'storage/unauthorized' || code === 'storage/unauthenticated') {
-                return 'Firebase Storage 보안 규칙이 업로드/읽기를 막고 있습니다. Firebase 콘솔 > Storage > Rules 에서 권한을 확인해주세요.';
-            }
-            if (code === 'storage/unknown') {
-                return 'Storage 버킷이 아직 활성화되지 않았을 수 있습니다. Firebase 콘솔에서 Storage 사용 설정 여부를 확인해주세요.';
-            }
-            if (code === 'storage/quota-exceeded') {
-                return 'Storage 저장 용량을 초과했습니다.';
-            }
-            return (err && err.message) ? err.message : String(err);
-        }
-
-        // [추가] 클라우드 업로드 실패 시 사용자에게 원인과 재시도 방법을 알림
-        function notifyCloudUploadFailure(fileLabel, err) {
-            alert(
-                `'${fileLabel}' 파일은 이 브라우저에만 저장되었고, 클라우드 업로드에 실패해 아직 외부 공유 링크(fileUrl)가 생성되지 않았습니다.\n\n` +
-                `사유: ${describeStorageError(err)}\n\n` +
-                `문제를 해결한 뒤 ↺(변경) 버튼으로 같은 파일을 다시 첨부하면 자동으로 공유 링크가 생성됩니다.`
-            );
-        }
-
         // Storage 비동기 업로드 (성공 시 URL 갱신)
         async function tryUploadToStorage(fileId, file) {
             try {
@@ -1467,8 +1443,7 @@
                     persistCerts(certs, true);
                 }
             } catch (err) {
-                console.error("Storage 클라우드 업로드 실패 (로컬 저장소 유지):", err);
-                notifyCloudUploadFailure(file.name, err);
+                console.warn("Storage 클라우드 백업 제외 (로컬 저장소 유지):", err.message);
             }
         }
 
@@ -1488,8 +1463,7 @@
                     renderCalendar();
                 }
             } catch (err) {
-                console.error("공고 파일 클라우드 업로드 실패 (로컬 저장소 유지):", err);
-                notifyCloudUploadFailure(file.name, err);
+                console.warn("공고 파일 클라우드 백업 제외 (로컬 저장소 유지):", err.message);
             }
         }
 
