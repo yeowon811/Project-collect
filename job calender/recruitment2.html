@@ -315,6 +315,23 @@
             font-size: 0.72rem;
         }
 
+        /* 인라인 수정 입력창 (Languages / Certificates / Activities 공통) */
+        .inline-edit-input {
+            width: 100%;
+            min-width: 0;
+            padding: 4px 0;
+            border: none;
+            border-bottom: 1px solid var(--border-color);
+            background: transparent;
+            font-size: 0.75rem;
+            color: var(--text-main);
+        }
+
+            .inline-edit-input:focus {
+                outline: none;
+                border-bottom-color: var(--primary-color);
+            }
+
         /* 파일 이모티콘 버튼 스타일 */
         .cert-file-btn {
             background: transparent;
@@ -387,6 +404,104 @@
             letter-spacing: 0.05em;
         }
 
+        /* 어학 입력 폼 & 목록 */
+        .lang-form-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.8fr) auto;
+            gap: 8px;
+            align-items: center;
+            margin-top: 4px;
+            width: 100%;
+        }
+
+            .lang-form-grid input {
+                width: 100%;
+                min-width: 0;
+                padding: 6px 0;
+                border: none;
+                border-bottom: 1px solid var(--border-color);
+                background: transparent;
+                font-size: 0.75rem;
+                color: var(--text-main);
+            }
+
+                .lang-form-grid input:focus {
+                    outline: none;
+                    border-bottom-color: var(--primary-color);
+                }
+
+        .lang-badge-row {
+            display: grid;
+            grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.9fr) minmax(0, 0.9fr);
+            gap: 8px;
+            align-items: center;
+            width: 100%;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.78rem;
+            transition: background 0.15s ease, opacity 0.15s ease;
+        }
+
+            .lang-badge-row.edit-mode {
+                grid-template-columns: auto minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.8fr) auto;
+            }
+
+            .lang-badge-row.dragging {
+                opacity: 0.35;
+                background: var(--hover-bg);
+            }
+
+            .lang-badge-row.drag-over {
+                border-top: 2px solid var(--primary-color);
+            }
+
+        .lang-badge-row .lang-col {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+            user-select: text;
+        }
+
+        .lang-badge-row .lang-col-name {
+            font-weight: 400;
+            color: var(--text-main);
+        }
+
+        .lang-badge-row .lang-col-sub {
+            color: var(--text-sub);
+            font-size: 0.72rem;
+        }
+
+        /* 시험명 클릭 시 수험번호 표시 (공간 절약을 위해 항상 표시하지 않음) */
+        .lang-name-cell {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            cursor: pointer;
+            user-select: text;
+        }
+
+            .lang-name-cell .lang-col-name {
+                font-weight: 400;
+                color: var(--text-main);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+        .lang-number-badge {
+            display: none;
+            color: var(--text-sub);
+            font-size: 0.68rem;
+            letter-spacing: 0.02em;
+            margin-top: 2px;
+        }
+
+            .lang-number-badge.show {
+                display: block;
+            }
+
         /* 대내외활동 / 공모전 섹션 */
         .activity-section {
             border: 3px solid var(--border-color);
@@ -401,6 +516,13 @@
             justify-content: space-between;
             align-items: center;
             user-select: none;
+            gap: 12px;
+        }
+
+        .activity-header-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
 
         .activity-toggle-btn {
@@ -498,7 +620,21 @@
             padding: 8px 0;
             border-bottom: 1px solid var(--border-color);
             font-size: 0.8rem;
+            transition: background 0.15s ease, opacity 0.15s ease;
         }
+
+            .activity-item-row.edit-mode {
+                grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 2fr) auto;
+            }
+
+            .activity-item-row.dragging {
+                opacity: 0.35;
+                background: var(--hover-bg);
+            }
+
+            .activity-item-row.drag-over {
+                border-top: 2px solid var(--primary-color);
+            }
 
         @media (max-width: 860px) {
             .activity-item-row {
@@ -972,6 +1108,145 @@
             gap: 12px;
             margin-top: 28px;
         }
+
+        /* ============================================================
+           모바일 반응형 레이아웃 정리
+           ============================================================ */
+        @media (max-width: 720px) {
+            body {
+                padding: 20px 12px;
+            }
+
+            header {
+                gap: 12px;
+                margin-bottom: 22px;
+                padding-bottom: 12px;
+            }
+
+            .title-area h1 {
+                font-size: 1.05rem;
+                letter-spacing: 0.16em;
+            }
+
+            .controls {
+                width: 100%;
+                gap: 8px;
+            }
+
+                .controls .btn,
+                .controls .file-label,
+                .controls .cloud-badge {
+                    flex: 1 1 auto;
+                    justify-content: center;
+                    text-align: center;
+                }
+
+            .dashboard-grid {
+                gap: 16px;
+                margin-bottom: 16px;
+            }
+
+            .profile-card {
+                padding: 18px;
+                gap: 14px;
+            }
+
+            .profile-info-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            /* 입력 폼: 항목마다 한 줄씩 정리 */
+            .lang-form-grid,
+            .cert-form-grid,
+            .activity-form-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+                .lang-form-grid #addLangBtn,
+                .cert-form-grid #addCertBtn,
+                .activity-form-grid #addActivityBtn {
+                    width: 100%;
+                    padding: 8px 0;
+                }
+
+            /* 목록 행: 항목마다 한 줄씩 정리하고 줄바꿈 허용 */
+            .lang-badge-row,
+            .lang-badge-row.edit-mode,
+            .cert-badge-row,
+            .cert-badge-row.edit-mode,
+            .activity-item-row,
+            .activity-item-row.edit-mode {
+                grid-template-columns: 1fr;
+                gap: 4px;
+                padding: 10px 0;
+            }
+
+            .cert-badge-row .cert-col,
+            .lang-badge-row .lang-col,
+            .lang-name-cell .lang-col-name,
+            .activity-col-name,
+            .activity-col-period {
+                white-space: normal;
+                overflow: visible;
+                text-overflow: clip;
+            }
+
+            .drag-handle {
+                align-self: flex-start;
+            }
+
+            .spec-delete-btn {
+                align-self: flex-end;
+            }
+
+            /* 캘린더 영역 축소 */
+            .month-nav h2 {
+                font-size: 1rem;
+            }
+
+            .weekdays-grid {
+                font-size: 0.62rem;
+                letter-spacing: 0.05em;
+            }
+
+            .calendar-grid {
+                grid-auto-rows: minmax(74px, auto);
+            }
+
+            .day-cell {
+                padding: 5px;
+            }
+
+            .day-number {
+                font-size: 0.68rem;
+                margin-bottom: 5px;
+            }
+
+            .job-item {
+                flex-wrap: wrap;
+                gap: 3px;
+                padding: 4px 5px;
+                font-size: 0.66rem;
+            }
+
+            .job-actions {
+                gap: 2px;
+            }
+
+            .job-btn {
+                font-size: 0.6rem;
+                padding: 1px 3px;
+            }
+
+            /* 모달: 화면 폭에 맞춰 축소 (인라인 width 지정보다 우선 적용) */
+            .modal {
+                width: calc(100vw - 32px) !important;
+                max-width: 380px;
+                padding: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1020,10 +1295,13 @@
             <div class="profile-card">
                 <div class="card-head">
                     <h3>LANGUAGES</h3>
+                    <button type="button" class="settings-toggle-btn" id="langSettingsToggleBtn" title="어학 항목 순서 변경 및 수정/삭제 설정 토글">⚙</button>
                 </div>
-                <div class="spec-form">
-                    <input type="text" id="newLangName" class="spec-name-input" placeholder="TOEIC, AL 등">
-                    <input type="text" id="newLangDetail" class="spec-detail-input" placeholder="점수/등급">
+                <div class="lang-form-grid">
+                    <input type="text" id="newLangName" placeholder="시험명">
+                    <input type="text" id="newLangNumber" placeholder="수험번호">
+                    <input type="text" id="newLangDate" placeholder="취득일">
+                    <input type="text" id="newLangScore" placeholder="점수">
                     <button class="btn" id="addLangBtn" style="padding: 4px 8px;">ADD</button>
                 </div>
                 <div class="spec-tags-container" id="langContainer">
@@ -1059,8 +1337,9 @@
         <!-- 대내외활동 / 공모전 영역 -->
         <div class="activity-section">
             <div class="activity-header-bar">
-                <div style="font-size: 0.85rem; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 400;">
+                <div class="activity-header-left" style="font-size: 0.85rem; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 400;">
                     ACTIVITIES & COMPETITIONS
+                    <button type="button" class="settings-toggle-btn" id="activitySettingsToggleBtn" title="활동 순서 변경 및 수정/삭제 설정 토글">⚙</button>
                 </div>
                 <button type="button" class="activity-toggle-btn" id="activityToggleBtn">
                     대내외활동 / 공모전
@@ -1549,6 +1828,13 @@
             if (syncCloud) syncToFirebase({ certs: certs });
         }
 
+        function updateCertField(index, field, value) {
+            const certs = getSavedCerts();
+            if (!certs[index]) return;
+            certs[index][field] = value;
+            persistCerts(certs);
+        }
+
         function renderCerts() {
             const certs = getSavedCerts();
             const container = document.getElementById('certContainer');
@@ -1576,12 +1862,22 @@
                     rowHtml += `<span class="drag-handle" draggable="true" title="드래그하여 순서 변경">⋮⋮</span>`;
                 }
 
-                rowHtml += `
+                // [핵심 변경] 설정 모드에서는 텍스트 항목을 바로 수정할 수 있는 입력창으로 표시
+                if (isCertEditMode) {
+                    rowHtml += `
+                            <input type="text" class="inline-edit-input cert-field-input" data-index="${index}" data-field="name" value="${(item.name || '').replace(/"/g, '&quot;')}" placeholder="자격증명">
+                            <input type="text" class="inline-edit-input cert-field-input" data-index="${index}" data-field="number" value="${(item.number || '').replace(/"/g, '&quot;')}" placeholder="자격번호">
+                            <input type="text" class="inline-edit-input cert-field-input" data-index="${index}" data-field="date" value="${(item.date || '').replace(/"/g, '&quot;')}" placeholder="취득일">
+                            <input type="text" class="inline-edit-input cert-field-input" data-index="${index}" data-field="org" value="${(item.org || '').replace(/"/g, '&quot;')}" placeholder="발급기관">
+                        `;
+                } else {
+                    rowHtml += `
                             <span class="cert-col cert-col-name" title="${item.name || ''}">${item.name || '-'}</span>
                             <span class="cert-col cert-col-sub" title="${item.number || ''}">${item.number || '-'}</span>
                             <span class="cert-col cert-col-sub" title="${item.date || ''}">${item.date || '-'}</span>
                             <span class="cert-col cert-col-sub" title="${item.org || ''}">${item.org || '-'}</span>
                         `;
+                }
 
                 const hasFile = !!(item.fileUrl || item.hasLocalFile);
                 let fileControlsHtml = '';
@@ -1632,6 +1928,17 @@
                 }
 
                 row.innerHTML = rowHtml;
+
+                // 인라인 수정 입력창 변경사항 저장
+                row.querySelectorAll('.cert-field-input').forEach(inputEl => {
+                    inputEl.addEventListener('change', () => {
+                        updateCertField(index, inputEl.dataset.field, inputEl.value.trim());
+                    });
+                    inputEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') inputEl.blur();
+                    });
+                    inputEl.addEventListener('click', (e) => e.stopPropagation());
+                });
 
                 const fileBtn = row.querySelector('.cert-file-btn');
                 const rowFileInput = row.querySelector('.row-file-input');
@@ -1850,7 +2157,17 @@
             });
         });
 
-        /* 3. 어학 관리 */
+        /* 3. 어학 관리 (톱니바퀴 모드 연동) */
+        let draggedLangIndex = null;
+        let isLangEditMode = false;
+
+        const langSettingsToggleBtn = document.getElementById('langSettingsToggleBtn');
+        langSettingsToggleBtn.addEventListener('click', () => {
+            isLangEditMode = !isLangEditMode;
+            langSettingsToggleBtn.classList.toggle('active', isLangEditMode);
+            renderLangs();
+        });
+
         function getSavedLangs() {
             return JSON.parse(localStorage.getItem(LANGS_STORAGE_KEY) || '[]');
         }
@@ -1858,6 +2175,13 @@
         function persistLangs(langs, syncCloud = true) {
             localStorage.setItem(LANGS_STORAGE_KEY, JSON.stringify(langs));
             if (syncCloud) syncToFirebase({ langs: langs });
+        }
+
+        function updateLangField(index, field, value) {
+            const langs = getSavedLangs();
+            if (!langs[index]) return;
+            langs[index][field] = value;
+            persistLangs(langs);
         }
 
         function renderLangs() {
@@ -1871,33 +2195,119 @@
 
             container.innerHTML = '';
             langs.forEach((item, index) => {
-                const badge = document.createElement('div');
-                badge.className = 'lang-badge';
-                const detailSpan = item.detail ? `<span class="spec-detail-text">(${item.detail})</span>` : '';
+                // 기존 {name, detail} 형태의 이전 데이터와 호환
+                const scoreValue = (item.score !== undefined && item.score !== '') ? item.score : (item.detail || '');
 
-                badge.innerHTML = `
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="color: var(--text-sub);">-</span>
-                                <span>${item.name} ${detailSpan}</span>
-                            </div>
-                            <button class="spec-delete-btn" title="삭제" data-index="${index}">✕</button>
+                const row = document.createElement('div');
+                row.className = 'lang-badge-row' + (isLangEditMode ? ' edit-mode' : '');
+                row.dataset.index = index;
+
+                let rowHtml = '';
+
+                if (isLangEditMode) {
+                    rowHtml += `<span class="drag-handle" draggable="true" title="드래그하여 순서 변경">⋮⋮</span>`;
+                    rowHtml += `
+                            <input type="text" class="inline-edit-input lang-field-input" data-index="${index}" data-field="name" value="${(item.name || '').replace(/"/g, '&quot;')}" placeholder="시험명">
+                            <input type="text" class="inline-edit-input lang-field-input" data-index="${index}" data-field="number" value="${(item.number || '').replace(/"/g, '&quot;')}" placeholder="수험번호">
+                            <input type="text" class="inline-edit-input lang-field-input" data-index="${index}" data-field="date" value="${(item.date || '').replace(/"/g, '&quot;')}" placeholder="취득일">
+                            <input type="text" class="inline-edit-input lang-field-input" data-index="${index}" data-field="score" value="${(scoreValue || '').replace(/"/g, '&quot;')}" placeholder="점수/등급">
+                            <button class="spec-delete-btn" title="어학 항목 삭제" data-index="${index}">✕</button>
                         `;
+                } else {
+                    const numberText = item.number ? ` ${item.number}` : '등록된 수험번호 없음';
+                    rowHtml += `
+                            <div class="lang-col lang-name-cell" data-index="${index}" title="클릭하면 수험번호가 표시됩니다">
+                                <span class="lang-col-name">${item.name || '-'}</span>
+                                <div class="lang-number-badge">${numberText}</div>
+                            </div>
+                            <span class="lang-col lang-col-sub" title="${item.date || ''}">${item.date || '-'}</span>
+                            <span class="lang-col lang-col-sub" title="${scoreValue || ''}">${scoreValue || '-'}</span>
+                        `;
+                }
 
-                badge.querySelector('.spec-delete-btn').addEventListener('click', () => {
-                    deleteLang(index);
+                row.innerHTML = rowHtml;
+
+                row.querySelectorAll('.lang-field-input').forEach(inputEl => {
+                    inputEl.addEventListener('change', () => {
+                        updateLangField(index, inputEl.dataset.field, inputEl.value.trim());
+                    });
+                    inputEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') inputEl.blur();
+                    });
+                    inputEl.addEventListener('click', (e) => e.stopPropagation());
                 });
 
-                container.appendChild(badge);
+                // 시험명 클릭 시 수험번호 뱃지 토글 (읽기 전용 모드에서만)
+                if (!isLangEditMode) {
+                    const nameCell = row.querySelector('.lang-name-cell');
+                    if (nameCell) {
+                        nameCell.addEventListener('click', () => {
+                            const badge = nameCell.querySelector('.lang-number-badge');
+                            if (badge) badge.classList.toggle('show');
+                        });
+                    }
+                }
+
+                if (isLangEditMode) {
+                    const delBtn = row.querySelector('.spec-delete-btn');
+                    if (delBtn) {
+                        delBtn.addEventListener('click', () => {
+                            deleteLang(index);
+                        });
+                    }
+
+                    const handle = row.querySelector('.drag-handle');
+                    if (handle) {
+                        handle.addEventListener('dragstart', (e) => {
+                            draggedLangIndex = index;
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', index);
+                            row.classList.add('dragging');
+                        });
+
+                        handle.addEventListener('dragend', () => {
+                            row.classList.remove('dragging');
+                            document.querySelectorAll('.lang-badge-row').forEach(r => r.classList.remove('drag-over'));
+                        });
+                    }
+
+                    row.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        row.classList.add('drag-over');
+                    });
+
+                    row.addEventListener('dragleave', () => {
+                        row.classList.remove('drag-over');
+                    });
+
+                    row.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        row.classList.remove('drag-over');
+                        const targetIndex = Number(row.dataset.index);
+                        if (draggedLangIndex !== null && draggedLangIndex !== targetIndex) {
+                            const updatedLangs = getSavedLangs();
+                            const [movedItem] = updatedLangs.splice(draggedLangIndex, 1);
+                            updatedLangs.splice(targetIndex, 0, movedItem);
+                            persistLangs(updatedLangs);
+                            renderLangs();
+                        }
+                    });
+                }
+
+                container.appendChild(row);
             });
         }
 
         function addLang() {
             const nameInput = document.getElementById('newLangName');
-            const detailInput = document.getElementById('newLangDetail');
+            const numberInput = document.getElementById('newLangNumber');
+            const dateInput = document.getElementById('newLangDate');
+            const scoreInput = document.getElementById('newLangScore');
             const name = nameInput.value.trim();
 
             if (!name) {
-                alert('어학 시험명을 입력해주세요.');
+                alert('시험명을 입력해주세요.');
                 nameInput.focus();
                 return;
             }
@@ -1905,12 +2315,16 @@
             const langs = getSavedLangs();
             langs.push({
                 name: name,
-                detail: detailInput.value.trim()
+                number: numberInput.value.trim(),
+                date: dateInput.value.trim(),
+                score: scoreInput.value.trim()
             });
 
             persistLangs(langs);
             nameInput.value = '';
-            detailInput.value = '';
+            numberInput.value = '';
+            dateInput.value = '';
+            scoreInput.value = '';
             renderLangs();
         }
 
@@ -1922,15 +2336,25 @@
         }
 
         document.getElementById('addLangBtn').addEventListener('click', addLang);
-        ['newLangName', 'newLangDetail'].forEach(id => {
+        ['newLangName', 'newLangNumber', 'newLangDate', 'newLangScore'].forEach(id => {
             document.getElementById(id).addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') addLang();
             });
         });
 
-        /* 4. 대내외활동 / 공모전 관리 */
+        /* 4. 대내외활동 / 공모전 관리 (톱니바퀴 모드 연동) */
         const activityToggleBtn = document.getElementById('activityToggleBtn');
         const activityContentPanel = document.getElementById('activityContentPanel');
+
+        let draggedActivityIndex = null;
+        let isActivityEditMode = false;
+
+        const activitySettingsToggleBtn = document.getElementById('activitySettingsToggleBtn');
+        activitySettingsToggleBtn.addEventListener('click', () => {
+            isActivityEditMode = !isActivityEditMode;
+            activitySettingsToggleBtn.classList.toggle('active', isActivityEditMode);
+            renderActivities();
+        });
 
         function initActivityToggle() {
             const isOpen = localStorage.getItem(ACTIVITY_PANEL_OPEN_KEY) === 'true';
@@ -1962,6 +2386,13 @@
             if (syncCloud) syncToFirebase({ activities: activities });
         }
 
+        function updateActivityField(index, field, value) {
+            const activities = getSavedActivities();
+            if (!activities[index]) return;
+            activities[index][field] = value;
+            persistActivities(activities);
+        }
+
         function renderActivities() {
             const activities = getSavedActivities();
             const container = document.getElementById('activityListContainer');
@@ -1974,17 +2405,85 @@
             container.innerHTML = '';
             activities.forEach((act, index) => {
                 const row = document.createElement('div');
-                row.className = 'activity-item-row';
-                row.innerHTML = `
+                row.className = 'activity-item-row' + (isActivityEditMode ? ' edit-mode' : '');
+                row.dataset.index = index;
+
+                let rowHtml = '';
+
+                if (isActivityEditMode) {
+                    rowHtml += `<span class="drag-handle" draggable="true" title="드래그하여 순서 변경">⋮⋮</span>`;
+                    rowHtml += `
+                            <input type="text" class="inline-edit-input activity-field-input" data-index="${index}" data-field="name" value="${(act.name || '').replace(/"/g, '&quot;')}" placeholder="활동/공모전명">
+                            <input type="text" class="inline-edit-input activity-field-input" data-index="${index}" data-field="period" value="${(act.period || '').replace(/"/g, '&quot;')}" placeholder="기간">
+                            <input type="text" class="inline-edit-input activity-field-input" data-index="${index}" data-field="desc" value="${(act.desc || '').replace(/"/g, '&quot;')}" placeholder="활동 내용">
+                            <button class="spec-delete-btn" title="삭제" data-index="${index}">✕</button>
+                        `;
+                } else {
+                    rowHtml += `
                             <span class="activity-col-name" title="${act.name || ''}">${act.name || '-'}</span>
                             <span class="activity-col-period" title="${act.period || ''}">${act.period || '-'}</span>
                             <span class="activity-col-desc" title="${act.desc || ''}">${act.desc || '-'}</span>
-                            <button class="spec-delete-btn" title="삭제" data-index="${index}">✕</button>
                         `;
+                }
 
-                row.querySelector('.spec-delete-btn').addEventListener('click', () => {
-                    deleteActivity(index);
+                row.innerHTML = rowHtml;
+
+                row.querySelectorAll('.activity-field-input').forEach(inputEl => {
+                    inputEl.addEventListener('change', () => {
+                        updateActivityField(index, inputEl.dataset.field, inputEl.value.trim());
+                    });
+                    inputEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') inputEl.blur();
+                    });
+                    inputEl.addEventListener('click', (e) => e.stopPropagation());
                 });
+
+                if (isActivityEditMode) {
+                    const delBtn = row.querySelector('.spec-delete-btn');
+                    if (delBtn) {
+                        delBtn.addEventListener('click', () => {
+                            deleteActivity(index);
+                        });
+                    }
+
+                    const handle = row.querySelector('.drag-handle');
+                    if (handle) {
+                        handle.addEventListener('dragstart', (e) => {
+                            draggedActivityIndex = index;
+                            e.dataTransfer.effectAllowed = 'move';
+                            e.dataTransfer.setData('text/plain', index);
+                            row.classList.add('dragging');
+                        });
+
+                        handle.addEventListener('dragend', () => {
+                            row.classList.remove('dragging');
+                            document.querySelectorAll('.activity-item-row').forEach(r => r.classList.remove('drag-over'));
+                        });
+                    }
+
+                    row.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        row.classList.add('drag-over');
+                    });
+
+                    row.addEventListener('dragleave', () => {
+                        row.classList.remove('drag-over');
+                    });
+
+                    row.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        row.classList.remove('drag-over');
+                        const targetIndex = Number(row.dataset.index);
+                        if (draggedActivityIndex !== null && draggedActivityIndex !== targetIndex) {
+                            const updatedActivities = getSavedActivities();
+                            const [movedItem] = updatedActivities.splice(draggedActivityIndex, 1);
+                            updatedActivities.splice(targetIndex, 0, movedItem);
+                            persistActivities(updatedActivities);
+                            renderActivities();
+                        }
+                    });
+                }
 
                 container.appendChild(row);
             });
