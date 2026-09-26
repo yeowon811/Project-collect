@@ -6,7 +6,7 @@
     <title>관리자 제어 센터</title>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <!-- 꺾은선 그래프 렌더링을 위한 Chart.js 라이브러리 추가 -->
+    <!-- 꺾은선 그래프 렌더링을 위한 Chart.js 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -75,24 +75,17 @@
             background: #64748b;
         }
 
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+
         input, select {
             background: #0f172a;
             border: 1px solid var(--card-border);
             color: var(--text);
             padding: 8px 10px;
             border-radius: 6px;
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .grid-2 {
-                grid-template-columns: 1fr;
-            }
         }
 
         table {
@@ -116,47 +109,189 @@
             z-index: 999;
         }
 
-        .badge-done {
-            background: #065f46;
-            color: #34d399;
-            font-size: 0.8rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-        }
-
-        .badge-wait {
-            background: #78350f;
-            color: #fbbf24;
-            font-size: 0.8rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-        }
-
-        .badge-multiplier {
-            background: #312e81;
-            color: #a5b4fc;
-            font-size: 0.8rem;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: 600;
-        }
-
-        .rank-record-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(15, 23, 42, 0.6);
-            padding: 8px 10px;
-            border-radius: 6px;
-            border: 1px solid var(--card-border);
-        }
-
         /* 꺾은선 차트 컨테이너 */
         .chart-box {
             position: relative;
             width: 100%;
             height: 340px;
             margin-top: 14px;
+        }
+
+        /* ================= 🎮 게임 × 조 점수 매트릭스 ================= */
+        .matrix-wrap {
+            overflow-x: auto;
+            margin-top: 12px;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+        }
+
+        .score-matrix {
+            min-width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+            .score-matrix th,
+            .score-matrix td {
+                padding: 8px;
+                text-align: center;
+                border-bottom: 1px solid var(--card-border);
+                border-right: 1px solid rgba(51, 65, 85, 0.5);
+                white-space: nowrap;
+            }
+
+            .score-matrix thead th {
+                background: #0f172a;
+                color: var(--text-muted);
+                font-size: 0.85rem;
+                font-weight: 700;
+                position: sticky;
+                top: 0;
+            }
+
+                .score-matrix thead th.team-head {
+                    color: var(--text);
+                    font-size: 0.95rem;
+                    min-width: 110px;
+                }
+
+            /* 첫 열(게임명) 고정 */
+            .score-matrix .sticky-col {
+                position: sticky;
+                left: 0;
+                background: var(--card-bg);
+                z-index: 1;
+                text-align: left;
+                min-width: 170px;
+            }
+
+            .score-matrix thead .sticky-col {
+                background: #0f172a;
+                z-index: 2;
+            }
+
+            .score-matrix tfoot .sticky-col {
+                background: #172033;
+            }
+
+            .score-matrix tfoot td {
+                background: #172033;
+                font-weight: 700;
+            }
+
+            .score-matrix tfoot tr.total-row td {
+                color: var(--gold);
+                font-size: 1.05rem;
+                border-top: 2px solid var(--gold);
+            }
+
+        .game-name-input {
+            width: 100%;
+            font-weight: 700;
+        }
+
+        .score-input {
+            width: 90px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+            .score-input:focus {
+                outline: 2px solid var(--primary);
+                border-color: var(--primary);
+            }
+
+        td.cell-top .score-input {
+            border-color: var(--gold);
+            color: var(--gold);
+        }
+
+        .spy-input {
+            border-color: #7f1d1d;
+            background: #1c0f14;
+        }
+
+        .spy-label {
+            color: #f87171;
+        }
+
+        .rank-chip {
+            display: inline-block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-left: 4px;
+            font-weight: 600;
+        }
+
+        .add-game-bar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        .empty-msg {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 18px;
+        }
+
+        /* ================= 📩 조별 점수/값 제보 타임라인 ================= */
+        .report-timeline {
+            max-height: 420px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .report-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-left: 3px solid var(--primary);
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .report-item-left {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .report-item-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .report-item-team {
+            font-weight: 700;
+        }
+
+        .report-item-value {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            word-break: break-word;
+        }
+
+        .report-item-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .report-item-score {
+            font-weight: 800;
+            color: var(--gold);
+            font-size: 1.05rem;
+            white-space: nowrap;
         }
     </style>
 </head>
@@ -186,76 +321,77 @@
             <div id="live-ranking-bar" style="margin-top: 10px; font-weight: 600; color: var(--gold); line-height: 1.6;">-</div>
         </div>
 
-        <!-- 점수 배점 설정 -->
-        <div class="card">
-            <h3>등수별 기본 획득 점수 규칙</h3>
-            <div style="display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
-                <label>🥇 1등: <input type="number" id="rule-p1" style="width: 80px;"></label>
-                <label>🥈 2등: <input type="number" id="rule-p2" style="width: 80px;"></label>
-                <label>🥉 3등: <input type="number" id="rule-p3" style="width: 80px;"></label>
-                <button class="btn" onclick="saveRules()">규칙 저장</button>
-            </div>
-        </div>
-
-        <!-- 게임별 순위 선정 및 일괄 합산 -->
+        <!-- 📩 조별 점수/값 제보 (타임라인) -->
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
                 <div>
-                    <h3>게임별 순위 및 기록 관리 (일괄 합산)</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">* 팀 선택과 기록은 즉시 동기화됩니다. 종목별 가중치가 적용된 점수가 합산됩니다.</p>
+                    <h3>📩 조별 점수/값 제보 (타임라인)</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">* 실시간 점수 현황판에서 각 조가 보낸 점수/값 제보가 받은 순서대로 표시됩니다.</p>
                 </div>
-                <button class="btn btn-success" onclick="batchCalculateScores()">⚡ 미반영 게임 점수 일괄합산</button>
+                <button class="btn btn-undo" onclick="clearAllReports()">전체 삭제</button>
             </div>
-            <div id="game-selection-list" style="margin-top: 12px;"></div>
+            <div id="reports-timeline" class="report-timeline" style="margin-top: 12px;"></div>
+        </div>
+
+        <!-- 🎮 게임별 조 점수 입력표 (행: 게임 / 열: 조) -->
+        <div class="card">
+            <div>
+                <h3>🎮 게임별 점수 입력표</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
+                    * 칸에 점수를 입력하면 조별 총점이 자동으로 합산·동기화됩니다. (빈 칸 = 미입력)<br>
+                    * Enter: 아래 칸 / Shift+Enter: 위 칸 이동
+                </p>
+            </div>
+
+            <div class="add-game-bar">
+                <input type="text" id="new-game-name" placeholder="새 게임 이름 (예: 이어달리기)" style="flex: 2; min-width: 160px;" onkeydown="if(event.key==='Enter') addGame()">
+                <button class="btn btn-success" onclick="addGame()">＋ 게임 추가</button>
+            </div>
+
+            <div id="score-matrix" class="matrix-wrap"></div>
         </div>
 
         <!-- 추가/감점 즉시 반영 -->
         <div class="card">
             <h3>추가 점수 / 감점 부여</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">* 게임 외 점수는 입력표 하단의 '추가/감점' 행에 누적되어 총점에 합산됩니다.</p>
             <div style="display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
                 <select id="quick-team"></select>
-                <input type="number" id="quick-pts" placeholder="점수 (+50 또는 -30)">
+                <input type="number" id="quick-pts" placeholder="점수 (+50 또는 -30)" onkeydown="if(event.key==='Enter') applyQuickScore()">
                 <button class="btn" onclick="applyQuickScore()">점수 즉시 반영</button>
             </div>
         </div>
 
-        <!-- 조 및 게임 관리 그리드 -->
-        <div class="grid-2">
-            <div class="card">
-                <h3>조(팀) 관리</h3>
-                <div style="display: flex; gap: 6px; margin: 10px 0;">
-                    <input type="text" id="new-team-name" placeholder="신규 팀명" style="flex: 1;" onkeydown="if(event.key==='Enter') addTeam()">
-                    <button class="btn" onclick="addTeam()">추가</button>
-                </div>
-                <table id="team-table"><tbody></tbody></table>
+        <!-- 조 관리 -->
+        <div class="card">
+            <h3>조(팀) 관리</h3>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">* 조마다 비밀번호 2개: <strong>조원 비밀번호</strong>(일반 조원 입장) / <strong class="spy-label">🕵️ 스파이 비밀번호</strong>(해당 조 스파이 입장). 모든 비밀번호는 서로 겹치지 않아야 합니다.</p>
+            <div style="display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap;">
+                <input type="text" id="new-team-name" placeholder="신규 팀명" style="flex: 2; min-width: 100px;" onkeydown="if(event.key==='Enter') addTeam()">
+                <input type="text" id="new-team-password" placeholder="조원 비밀번호" style="flex: 1; min-width: 110px;" onkeydown="if(event.key==='Enter') addTeam()">
+                <input type="text" id="new-team-spy-password" class="spy-input" placeholder="🕵️ 스파이 비밀번호" style="flex: 1; min-width: 130px;" onkeydown="if(event.key==='Enter') addTeam()">
+                <button class="btn" onclick="addTeam()">추가</button>
             </div>
-
-            <div class="card">
-                <h3>게임 및 가중치 관리</h3>
-                <div style="display: flex; gap: 6px; margin: 10px 0; flex-wrap: wrap;">
-                    <input type="text" id="new-game-name" placeholder="신규 게임명" style="flex: 2;" onkeydown="if(event.key==='Enter') addGame()">
-                    <input type="number" id="new-game-multiplier" placeholder="가중치" value="1.0" step="0.1" min="0" style="flex: 1; min-width: 80px;">
-                    <button class="btn" onclick="addGame()">추가</button>
-                </div>
-                <table id="game-table">
-                    <thead>
-                        <tr style="color: var(--text-muted); font-size: 0.85rem;">
-                            <th>게임명</th>
-                            <th style="width: 90px;">가중치(배율)</th>
-                            <th style="width: 60px;">관리</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
+            <table id="team-table">
+                <thead>
+                    <tr style="color: var(--text-muted); font-size: 0.85rem;">
+                        <th>조 이름</th>
+                        <th style="width: 150px;">조원 비밀번호</th>
+                        <th style="width: 150px;" class="spy-label">🕵️ 스파이 비밀번호</th>
+                        <th style="width: 90px;">총점</th>
+                        <th style="width: 60px;">관리</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
         </div>
 
-        <!-- ================= 📈 신규: 조별 점수 변동 추이 꺾은선 그래프 (맨 아래 배치) ================= -->
+        <!-- 📈 조별 점수 변동 추이 꺾은선 그래프 -->
         <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid var(--card-border); padding-bottom: 10px;">
                 <div>
                     <h3>📈 조별 점수 변동 추이 (꺾은선 그래프)</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">점수 합산 또는 수동 기록 시점마다 점수 추이가 저장됩니다.</p>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">게임 점수 입력 시 게임별로 1개 지점이 자동 기록되며(같은 게임 연속 수정 시 갱신), 추가/감점·수동 기록 시에도 저장됩니다.</p>
                 </div>
                 <div style="display: flex; gap: 8px;">
                     <button class="btn" onclick="recordSnapshotManual()">📸 현재 점수 기록 (스냅샷)</button>
@@ -283,16 +419,18 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // games[].scores = { [teamId]: 입력 점수 }  /  teams[].bonus = 추가·감점 누적
+        // teams[].score = (게임 점수 합) + bonus  → 자동 계산되어 저장 (현황판 호환)
         const defaultState = {
             rules: { p1: 100, p2: 70, p3: 40 },
             teams: [
-                { id: 1, name: "1조", score: 0 },
-                { id: 2, name: "2조", score: 0 },
-                { id: 3, name: "3조", score: 0 },
-                { id: 4, name: "4조", score: 0 }
+                { id: 1, name: "1조", score: 0, bonus: 0, password: "1111", spyPassword: "11119" },
+                { id: 2, name: "2조", score: 0, bonus: 0, password: "2222", spyPassword: "22229" },
+                { id: 3, name: "3조", score: 0, bonus: 0, password: "3333", spyPassword: "33339" },
+                { id: 4, name: "4조", score: 0, bonus: 0, password: "4444", spyPassword: "44449" }
             ],
             games: [
-                { id: 1, name: "줄다리기", multiplier: 1.0, rank1: null, rank2: null, rank3: null, record1: "", record2: "", record3: "", calculated: false }
+                { id: 1, name: "줄다리기", scores: {} }
             ],
             history: [
                 {
@@ -305,6 +443,7 @@
         let currentState = null;
         let backupState = null;
         let scoreChart = null;
+        let lastMatrixSig = null;
 
         // 팀별 고유 그래프 색상 팔레트
         const teamColors = [
@@ -314,7 +453,29 @@
 
         function toArray(data) {
             if (!data) return [];
-            return Array.isArray(data) ? data : Object.values(data);
+            return (Array.isArray(data) ? data : Object.values(data)).filter(x => x !== null && x !== undefined);
+        }
+
+        // Firebase는 {"1":..,"2":..}처럼 숫자 키 객체를 배열로 바꿔 돌려주므로 다시 객체로 정규화
+        function toMap(data) {
+            if (!data) return {};
+            if (Array.isArray(data)) {
+                const m = {};
+                data.forEach((v, i) => { if (v !== null && v !== undefined) m[i] = v; });
+                return m;
+            }
+            return { ...data };
+        }
+
+        function escapeHtml(str) {
+            return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function formatDateTime(ts) {
+            if (!ts) return '-';
+            const d = new Date(ts);
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         }
 
         function unlockAdmin() {
@@ -325,6 +486,28 @@
             }
         }
 
+        /* ================= 점수 계산 ================= */
+        function hasValue(v) {
+            return v !== null && v !== undefined && v !== '' && !isNaN(Number(v));
+        }
+
+        function gameTotalForTeam(teamId) {
+            let sum = 0;
+            (currentState.games || []).forEach(g => {
+                const v = g.scores ? g.scores[teamId] : undefined;
+                if (hasValue(v)) sum += Number(v);
+            });
+            return Math.round(sum * 100) / 100;
+        }
+
+        // 모든 팀의 총점을 게임 점수 + 추가/감점으로 재계산
+        function recalcTotals() {
+            if (!currentState) return;
+            currentState.teams.forEach(t => {
+                t.score = Math.round((gameTotalForTeam(t.id) + (Number(t.bonus) || 0)) * 100) / 100;
+            });
+        }
+
         // 실시간 구독
         db.ref('scoreboard').on('value', (snapshot) => {
             const val = snapshot.val();
@@ -332,18 +515,30 @@
                 db.ref('scoreboard').set(defaultState);
                 return;
             }
+
+            const games = toArray(val.games).map(g => ({
+                id: g.id,
+                name: g.name || '이름 없는 게임',
+                scores: toMap(g.scores)
+            }));
+
             currentState = {
                 rules: val.rules || { p1: 100, p2: 70, p3: 40 },
-                teams: toArray(val.teams),
-                games: toArray(val.games).map(g => ({
-                    ...g,
-                    multiplier: g.multiplier !== undefined ? Number(g.multiplier) : 1.0
-                })),
-                history: toArray(val.history)
+                teams: toArray(val.teams).map(t => ({ ...t, password: t.password ?? '', spyPassword: t.spyPassword ?? '' })),
+                games,
+                history: toArray(val.history).map(h => ({ label: h.label || '기록', scores: toMap(h.scores) }))
             };
 
+            // 기존 데이터(bonus 필드 없음) 호환: 기존 총점 중 게임 점수를 뺀 나머지를 추가점수로 이관
+            currentState.teams.forEach(t => {
+                if (t.bonus === undefined || t.bonus === null) {
+                    t.bonus = (Number(t.score) || 0) - gameTotalForTeam(t.id);
+                }
+            });
+            recalcTotals();
+
             // 히스토리가 비어있으면 초기값 생성
-            if (!currentState.history || currentState.history.length === 0) {
+            if (currentState.history.length === 0) {
                 const initScores = {};
                 currentState.teams.forEach(t => { initScores[t.id] = Number(t.score) || 0; });
                 currentState.history = [{ label: "시작", scores: initScores }];
@@ -353,10 +548,55 @@
             renderChart();
         });
 
-        function updateDB(createUndo = false) {
-            if (createUndo && currentState) {
-                backupState = JSON.parse(JSON.stringify(currentState));
+        // 조별 점수/값 제보 구독 (scoreboard와 별도의 최상위 경로 reports 사용)
+        db.ref('reports').orderByChild('timestamp').on('value', (snapshot) => {
+            const list = [];
+            snapshot.forEach(child => {
+                list.push({ _key: child.key, ...child.val() });
+            });
+            renderReportsTimeline(list.reverse()); // 최신순
+        });
+
+        function renderReportsTimeline(list) {
+            const container = document.getElementById('reports-timeline');
+            if (!container) return;
+            if (!list || list.length === 0) {
+                container.innerHTML = '<div style="text-align: center; color: var(--text-muted); padding: 16px;">아직 접수된 제보가 없습니다.</div>';
+                return;
             }
+            container.innerHTML = list.map(r => `
+                    <div class="report-item">
+                        <div class="report-item-left">
+                            <span class="report-item-time">${formatDateTime(r.timestamp)}</span>
+                            <span class="report-item-team">${escapeHtml(r.teamName || '미상')}</span>
+                            <span class="report-item-value">${escapeHtml(r.value || '')}</span>
+                        </div>
+                        <div class="report-item-right">
+                            <span class="report-item-score">${(Number(r.score) || 0).toLocaleString()}점</span>
+                            <button class="btn btn-danger" onclick="deleteReport('${r._key}')">삭제</button>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        function deleteReport(key) {
+            if (!confirm('이 제보를 삭제하시겠습니까?')) return;
+            db.ref('reports/' + key).remove();
+        }
+
+        function clearAllReports() {
+            if (!confirm('접수된 모든 제보를 삭제하시겠습니까?')) return;
+            db.ref('reports').remove();
+        }
+
+        function saveBackup() {
+            if (currentState) backupState = JSON.parse(JSON.stringify(currentState));
+        }
+
+        // 저장 직전 항상 총점 재계산
+        function updateDB(createUndo = false) {
+            if (createUndo) saveBackup();
+            recalcTotals();
             db.ref('scoreboard').set(currentState);
         }
 
@@ -364,43 +604,57 @@
             if (!backupState) return alert("되돌릴 이전 작업 내역이 없습니다.");
             currentState = JSON.parse(JSON.stringify(backupState));
             backupState = null;
+            lastMatrixSig = null;
             db.ref('scoreboard').set(currentState);
             alert("이전 상태로 되돌렸습니다.");
         }
 
-        // 점수 히스토리 스냅샷 추가 함수
+        /* ================= 히스토리(그래프) ================= */
+        function currentScoresMap() {
+            const m = {};
+            currentState.teams.forEach(t => { m[t.id] = Number(t.score) || 0; });
+            return m;
+        }
+
+        function nowLabel() {
+            const now = new Date();
+            const p = n => String(n).padStart(2, '0');
+            return `${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
+        }
+
         function addHistorySnapshot(labelName) {
             if (!currentState) return;
             if (!currentState.history) currentState.history = [];
+            recalcTotals();
+            currentState.history.push({ label: labelName || nowLabel(), scores: currentScoresMap() });
+        }
 
-            const snapshotScores = {};
-            currentState.teams.forEach(t => {
-                snapshotScores[t.id] = Number(t.score) || 0;
-            });
-
-            const now = new Date();
-            const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
-            const label = labelName || timeStr;
-
-            currentState.history.push({
-                label: label,
-                scores: snapshotScores
-            });
+        // 같은 라벨(같은 게임)을 연속 수정하면 마지막 지점을 갱신, 아니면 새 지점 추가
+        function upsertHistorySnapshot(labelName) {
+            if (!currentState) return;
+            recalcTotals();
+            const h = currentState.history || (currentState.history = []);
+            const last = h[h.length - 1];
+            if (last && last.label === labelName && h.length > 1) {
+                last.scores = currentScoresMap();
+            } else {
+                h.push({ label: labelName, scores: currentScoresMap() });
+            }
         }
 
         function recordSnapshotManual() {
             if (!currentState) return;
             const label = prompt("기록할 스냅샷 이름을 입력하세요 (미입력 시 현재 시각으로 저장):");
-            addHistorySnapshot(label && label.trim() ? label.trim() : null);
+            if (label === null) return;
+            addHistorySnapshot(label.trim() ? label.trim() : null);
             updateDB();
             alert("현재 점수 상태가 그래프에 저장되었습니다.");
         }
 
         function resetHistory() {
             if (!confirm("변동 추이 그래프 기록을 초기화하고 현재 점수를 시작점으로 설정하시겠습니까?")) return;
-            const initScores = {};
-            currentState.teams.forEach(t => { initScores[t.id] = Number(t.score) || 0; });
-            currentState.history = [{ label: "시작", scores: initScores }];
+            recalcTotals();
+            currentState.history = [{ label: "시작", scores: currentScoresMap() }];
             updateDB();
         }
 
@@ -413,14 +667,13 @@
 
             const labels = history.map(h => h.label || '기록');
 
-            // 조별 데이터셋 매핑
             const datasets = teams.map((team, idx) => {
                 const color = teamColors[idx % teamColors.length];
                 const data = history.map(h => {
                     if (h.scores && h.scores[team.id] !== undefined) {
                         return Number(h.scores[team.id]) || 0;
                     }
-                    return null; // 해당 시점에 팀이 없었으면 null
+                    return null;
                 });
 
                 return {
@@ -431,7 +684,7 @@
                     borderWidth: 2.5,
                     pointRadius: 4,
                     pointHoverRadius: 6,
-                    tension: 0.15, // 완만한 꺾은선
+                    tension: 0.15,
                     spanGaps: true
                 };
             });
@@ -447,14 +700,9 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false,
-                        },
+                        interaction: { mode: 'index', intersect: false },
                         plugins: {
-                            legend: {
-                                labels: { color: '#f8fafc', font: { size: 12, weight: '600' } }
-                            },
+                            legend: { labels: { color: '#f8fafc', font: { size: 12, weight: '600' } } },
                             tooltip: {
                                 backgroundColor: '#1e293b',
                                 titleColor: '#f8fafc',
@@ -464,267 +712,307 @@
                             }
                         },
                         scales: {
-                            x: {
-                                ticks: { color: '#94a3b8' },
-                                grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                            },
-                            y: {
-                                ticks: { color: '#94a3b8' },
-                                grid: { color: 'rgba(255, 255, 255, 0.05)' }
-                            }
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } }
                         }
                     }
                 });
             }
         }
 
+        /* ================= 화면 렌더링 ================= */
         function renderAdmin() {
             if (!currentState) return;
             const teams = currentState.teams || [];
-            const games = currentState.games || [];
-            const rules = currentState.rules;
 
             // 1. 실시간 모니터링 바
             const sorted = [...teams].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
             document.getElementById('live-ranking-bar').innerHTML = sorted.length > 0
-                ? sorted.map((t, idx) => `${idx + 1}위: <strong>${t.name}</strong> (${(Number(t.score) || 0).toLocaleString()}P)`).join(' | ')
+                ? sorted.map((t, idx) => `${idx + 1}위: <strong>${escapeHtml(t.name)}</strong> (${(Number(t.score) || 0).toLocaleString()}P)`).join(' | ')
                 : '등록된 팀이 없습니다.';
 
-            // 2. 점수 규칙 세팅
-            document.getElementById('rule-p1').value = rules.p1;
-            document.getElementById('rule-p2').value = rules.p2;
-            document.getElementById('rule-p3').value = rules.p3;
+            // 2. 게임 × 조 점수 입력표
+            renderMatrix();
 
-            // 3. 즉시 점수 부여 드롭다운
+            // 3. 즉시 점수 부여 드롭다운 (선택값 유지)
             const quickSelect = document.getElementById('quick-team');
-            quickSelect.innerHTML = teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            const prevQuick = quickSelect.value;
+            quickSelect.innerHTML = teams.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+            if (teams.some(t => String(t.id) === prevQuick)) quickSelect.value = prevQuick;
 
             // 4. 팀 관리 테이블
             document.querySelector('#team-table tbody').innerHTML = teams.map(t => `
                     <tr>
-                        <td><input type="text" value="${t.name}" onchange="editTeamName('${t.id}', this.value)" style="width: 90%;"></td>
+                        <td><input type="text" value="${escapeHtml(t.name)}" onchange="editTeamName('${t.id}', this.value)" style="width: 90%;"></td>
+                        <td><input type="text" value="${escapeHtml(t.password || '')}" placeholder="조원 비밀번호" onchange="editTeamPassword('${t.id}', 'password', this)" style="width: 90%;"></td>
+                        <td><input type="text" class="spy-input" value="${escapeHtml(t.spyPassword || '')}" placeholder="스파이 비밀번호" onchange="editTeamPassword('${t.id}', 'spyPassword', this)" style="width: 90%;"></td>
                         <td style="font-weight: bold; color: var(--gold);">${(Number(t.score) || 0).toLocaleString()} P</td>
                         <td><button class="btn btn-danger" onclick="deleteTeam('${t.id}')">삭제</button></td>
                     </tr>
                 `).join('');
+        }
 
-            // 5. 게임 및 가중치 관리 테이블
-            document.querySelector('#game-table tbody').innerHTML = games.map(g => `
+        // 구조(팀/게임 구성)가 바뀔 때만 표를 다시 그리고, 값 변경은 제자리 갱신 → 입력 중 포커스 유지
+        function renderMatrix() {
+            const teams = currentState.teams || [];
+            const games = currentState.games || [];
+            const wrap = document.getElementById('score-matrix');
+            const sig = JSON.stringify([teams.map(t => [t.id, t.name]), games.map(g => g.id)]);
+
+            if (sig !== lastMatrixSig) {
+                wrap.innerHTML = buildMatrixHtml(teams, games);
+                lastMatrixSig = sig;
+            }
+            patchMatrix();
+        }
+
+        function buildMatrixHtml(teams, games) {
+            if (teams.length === 0) {
+                return '<div class="empty-msg">등록된 조가 없습니다. 아래 \'조(팀) 관리\'에서 먼저 조를 추가하세요.</div>';
+            }
+            const colCount = teams.length + 2;
+
+            const head = `
+                <thead>
                     <tr>
-                        <td><input type="text" value="${g.name}" onchange="editGameName('${g.id}', this.value)" style="width: 90%;"></td>
-                        <td><input type="number" step="0.1" min="0" value="${g.multiplier ?? 1.0}" onchange="editGameMultiplier('${g.id}', this.value)" style="width: 70px;"></td>
-                        <td><button class="btn btn-danger" onclick="deleteGame('${g.id}')">삭제</button></td>
+                        <th class="sticky-col">게임 \\ 조</th>
+                        ${teams.map(t => `<th class="team-head">${escapeHtml(t.name)}</th>`).join('')}
+                        <th>관리</th>
                     </tr>
-                `).join('');
+                </thead>`;
 
-            // 6. 게임별 순위 드롭다운 & 기록 인풋 세팅
-            const buildOptions = (selectedId) => {
-                let opts = `<option value="">--선택 안됨--</option>`;
+            const body = games.length === 0
+                ? `<tr><td colspan="${colCount}" class="empty-msg">등록된 게임이 없습니다. 위에서 게임을 추가하세요.</td></tr>`
+                : games.map(g => `
+                    <tr>
+                        <td class="sticky-col">
+                            <input type="text" class="game-name-input" data-g="${g.id}" data-f="name"
+                                   onchange="editGameName('${g.id}', this.value)">
+                        </td>
+                        ${teams.map(t => `
+                            <td data-cell="${g.id}|${t.id}">
+                                <input type="number" step="any" class="score-input" placeholder="-"
+                                       data-g="${g.id}" data-t="${t.id}"
+                                       onchange="setCellScore('${g.id}', '${t.id}', this.value)"
+                                       onkeydown="cellKey(event, this)">
+                            </td>`).join('')}
+                        <td><button class="btn btn-danger btn-sm" onclick="deleteGame('${g.id}')">삭제</button></td>
+                    </tr>`).join('');
+
+            const foot = `
+                <tfoot>
+                    <tr>
+                        <td class="sticky-col">게임 점수 합계</td>
+                        ${teams.map(t => `<td data-sum="game|${t.id}"></td>`).join('')}<td></td>
+                    </tr>
+                    <tr>
+                        <td class="sticky-col">추가 / 감점</td>
+                        ${teams.map(t => `<td data-sum="bonus|${t.id}"></td>`).join('')}<td></td>
+                    </tr>
+                    <tr class="total-row">
+                        <td class="sticky-col">🏆 총점</td>
+                        ${teams.map(t => `<td data-sum="total|${t.id}"></td>`).join('')}<td></td>
+                    </tr>
+                </tfoot>`;
+
+            return `<table class="score-matrix">${head}<tbody>${body}</tbody>${foot}</table>`;
+        }
+
+        function fmt(n) {
+            return (Number(n) || 0).toLocaleString();
+        }
+
+        function patchMatrix() {
+            const wrap = document.getElementById('score-matrix');
+            const teams = currentState.teams || [];
+            const games = currentState.games || [];
+            const active = document.activeElement;
+            const setVal = (el, v) => { if (el && el !== active && el.value !== String(v)) el.value = v; };
+
+            games.forEach(g => {
+                const sel = `[data-g="${CSS.escape(String(g.id))}"]`;
+                setVal(wrap.querySelector(`input${sel}[data-f="name"]`), g.name);
+
+                // 해당 게임 최고점 강조
+                const vals = teams.map(t => g.scores[t.id]).filter(hasValue).map(Number);
+                const top = vals.length ? Math.max(...vals) : null;
+
                 teams.forEach(t => {
-                    const isSelected = String(t.id) === String(selectedId) ? 'selected' : '';
-                    opts += `<option value="${t.id}" ${isSelected}>${t.name}</option>`;
+                    const raw = g.scores[t.id];
+                    const cell = wrap.querySelector(`td[data-cell="${CSS.escape(g.id + '|' + t.id)}"]`);
+                    if (!cell) return;
+                    setVal(cell.querySelector('input'), hasValue(raw) ? Number(raw) : '');
+                    cell.classList.toggle('cell-top', top !== null && hasValue(raw) && Number(raw) === top && vals.length > 1);
                 });
-                return opts;
-            };
-
-            document.getElementById('game-selection-list').innerHTML = games.map(g => {
-                const isDone = g.calculated;
-                const mult = Number(g.multiplier) || 1.0;
-                const p1 = Math.round(rules.p1 * mult);
-                const p2 = Math.round(rules.p2 * mult);
-                const p3 = Math.round(rules.p3 * mult);
-
-                return `
-                        <div style="border: 1px solid var(--card-border); padding: 14px; border-radius: 8px; margin-bottom: 12px; background: rgba(255,255,255,0.01);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <strong style="font-size: 1.05rem;">🎮 ${g.name}</strong>
-                                    <span class="badge-multiplier">가중치 ${mult}x (1등:${p1}P / 2등:${p2}P / 3등:${p3}P)</span>
-                                </div>
-                                ${isDone ? '<span class="badge-done">점수 반영 완료</span>' : '<span class="badge-wait">점수 미반영</span>'}
-                            </div>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px;">
-                                <div class="rank-record-group">
-                                    <span>🥇 1위:</span>
-                                    <select onchange="setGameRank('${g.id}', 'rank1', this.value)" style="flex: 1;">${buildOptions(g.rank1)}</select>
-                                    <input type="text" placeholder="기록(예: 10.5초)" value="${g.record1 || ''}" onchange="setGameRecord('${g.id}', 'record1', this.value)" style="width: 110px;">
-                                </div>
-                                <div class="rank-record-group">
-                                    <span>🥈 2위:</span>
-                                    <select onchange="setGameRank('${g.id}', 'rank2', this.value)" style="flex: 1;">${buildOptions(g.rank2)}</select>
-                                    <input type="text" placeholder="기록" value="${g.record2 || ''}" onchange="setGameRecord('${g.id}', 'record2', this.value)" style="width: 110px;">
-                                </div>
-                                <div class="rank-record-group">
-                                    <span>🥉 3위:</span>
-                                    <select onchange="setGameRank('${g.id}', 'rank3', this.value)" style="flex: 1;">${buildOptions(g.rank3)}</select>
-                                    <input type="text" placeholder="기록" value="${g.record3 || ''}" onchange="setGameRecord('${g.id}', 'record3', this.value)" style="width: 110px;">
-                                </div>
-                            </div>
-                        </div>
-                    `;
-            }).join('');
-        }
-
-        /* 관리 액션 로직 */
-        function saveRules() {
-            currentState.rules = {
-                p1: Number(document.getElementById('rule-p1').value) || 0,
-                p2: Number(document.getElementById('rule-p2').value) || 0,
-                p3: Number(document.getElementById('rule-p3').value) || 0
-            };
-            updateDB();
-            alert("점수 규칙이 저장되었습니다.");
-        }
-
-        function setGameRank(gameId, rankKey, value) {
-            const g = currentState.games.find(item => String(item.id) === String(gameId));
-            if (g) {
-                g[rankKey] = value ? value : null;
-                g.calculated = false; // 순위 변경 시 미반영 상태로 전환
-                updateDB();
-            }
-        }
-
-        function setGameRecord(gameId, recordKey, value) {
-            const g = currentState.games.find(item => String(item.id) === String(gameId));
-            if (g) {
-                g[recordKey] = value ? value.trim() : "";
-                updateDB();
-            }
-        }
-
-        function batchCalculateScores() {
-            const uncalculated = currentState.games.filter(g => !g.calculated && (g.rank1 || g.rank2 || g.rank3));
-            if (uncalculated.length === 0) {
-                return alert("새롭게 합산할 미반영 게임 결과가 없습니다.");
-            }
-
-            if (!confirm(`총 ${uncalculated.length}개의 미반영 게임 결과를 가중치를 적용하여 점수에 합산하시겠습니까?`)) return;
-            updateDB(true);
-
-            const rules = currentState.rules;
-            let gameNames = [];
-
-            uncalculated.forEach(g => {
-                gameNames.push(g.name);
-                const mult = Number(g.multiplier) || 1.0;
-                const applyRankScore = (rankId, pts) => {
-                    if (!rankId) return;
-                    const t = currentState.teams.find(x => String(x.id) === String(rankId));
-                    if (t) {
-                        t.score = (Number(t.score) || 0) + Math.round(pts * mult);
-                    }
-                };
-
-                applyRankScore(g.rank1, rules.p1);
-                applyRankScore(g.rank2, rules.p2);
-                applyRankScore(g.rank3, rules.p3);
-                g.calculated = true;
             });
 
-            // 점수 합산 완료 시 변동 추이 스냅샷 자동 저장
-            addHistorySnapshot(gameNames.join(', ') + ' 반영');
-
-            updateDB();
-            alert("가중치가 반영된 일괄 점수 합산이 완료되었습니다 (그래프에 기록됨).");
+            // 하단 합계 + 순위
+            const ranked = [...teams].sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+            teams.forEach(t => {
+                const id = CSS.escape(String(t.id));
+                const gameSum = gameTotalForTeam(t.id);
+                const bonus = Number(t.bonus) || 0;
+                const rank = ranked.findIndex(x => (Number(x.score) || 0) === (Number(t.score) || 0)) + 1;
+                const gEl = wrap.querySelector(`td[data-sum="game|${id}"]`);
+                const bEl = wrap.querySelector(`td[data-sum="bonus|${id}"]`);
+                const tEl = wrap.querySelector(`td[data-sum="total|${id}"]`);
+                if (gEl) gEl.textContent = `${fmt(gameSum)} P`;
+                if (bEl) bEl.textContent = `${bonus > 0 ? '+' : ''}${fmt(bonus)} P`;
+                if (tEl) tEl.innerHTML = `${fmt(t.score)} P<span class="rank-chip">${rank}위</span>`;
+            });
         }
 
+        // Enter: 아래 칸 / Shift+Enter: 위 칸 (같은 조 열)
+        function cellKey(e, el) {
+            if (e.key !== 'Enter') return;
+            e.preventDefault();
+            const col = [...document.querySelectorAll(`#score-matrix input.score-input[data-t="${CSS.escape(el.dataset.t)}"]`)];
+            const idx = col.indexOf(el);
+            const next = col[idx + (e.shiftKey ? -1 : 1)];
+            el.blur(); // change 이벤트 발생 → 저장
+            if (next) { next.focus(); next.select(); }
+        }
+
+        /* ================= 게임 관리 ================= */
+        function findGame(id) {
+            return currentState.games.find(g => String(g.id) === String(id));
+        }
+
+        function addGame() {
+            if (!currentState) return;
+            const nameEl = document.getElementById('new-game-name');
+            const name = nameEl.value.trim();
+            if (!name) return alert("게임 이름을 입력하세요.");
+
+            saveBackup();
+            currentState.games.push({ id: String(Date.now()), name, scores: {} });
+            nameEl.value = '';
+            updateDB();
+        }
+
+        function editGameName(id, name) {
+            const g = findGame(id);
+            if (!g || !name.trim()) return;
+            g.name = name.trim();
+            updateDB();
+        }
+
+        function deleteGame(id) {
+            const g = findGame(id);
+            if (!g) return;
+            if (!confirm(`'${g.name}' 게임과 입력된 점수를 삭제하시겠습니까? (총점에서 자동 차감됩니다)`)) return;
+            saveBackup();
+            currentState.games = currentState.games.filter(x => String(x.id) !== String(id));
+            addHistorySnapshot(`${g.name} 삭제`);
+            updateDB();
+        }
+
+        // 칸에 값 입력 → 저장 + 자동 합산 + 그래프 갱신
+        function setCellScore(gameId, teamId, value) {
+            const g = findGame(gameId);
+            if (!g) return;
+            const v = String(value).trim();
+            if (v !== '' && isNaN(Number(v))) return alert("숫자만 입력할 수 있습니다.");
+
+            const prev = g.scores[teamId];
+            if ((v === '' && !hasValue(prev)) || (v !== '' && Number(v) === Number(prev) && hasValue(prev))) return;
+
+            saveBackup();
+            if (v === '') delete g.scores[teamId];
+            else g.scores[teamId] = Number(v);
+
+            upsertHistorySnapshot(g.name);
+            updateDB();
+        }
+
+        /* ================= 추가/감점 & 조 관리 ================= */
         function applyQuickScore() {
             const tid = document.getElementById('quick-team').value;
             const pts = Number(document.getElementById('quick-pts').value);
             if (!tid) return alert("팀을 먼저 등록하거나 선택하세요.");
             if (isNaN(pts) || pts === 0) return alert("유효한 점수를 입력하세요.");
 
-            updateDB(true);
             const t = currentState.teams.find(x => String(x.id) === String(tid));
-            if (t) {
-                t.score = (Number(t.score) || 0) + pts;
-                document.getElementById('quick-pts').value = '';
+            if (!t) return;
+            saveBackup();
+            t.bonus = (Number(t.bonus) || 0) + pts;
+            document.getElementById('quick-pts').value = '';
+            addHistorySnapshot(`${t.name} (${pts > 0 ? '+' : ''}${pts}P)`);
+            updateDB();
+            alert(`${t.name}에 ${pts}점이 반영되었습니다 (그래프에 기록됨).`);
+        }
 
-                // 추가/감점 반영 시 변동 추이 스냅샷 자동 저장
-                addHistorySnapshot(`${t.name} (${pts > 0 ? '+' : ''}${pts}P)`);
-
-                updateDB();
-                alert(`${t.name}에 ${pts}점이 반영되었습니다 (그래프에 기록됨).`);
+        // 모든 조의 조원/스파이 비밀번호 중 중복 여부 확인 (자기 자신의 같은 칸은 제외)
+        function findPasswordOwner(pw, exceptTeamId, exceptField) {
+            if (!pw) return null;
+            for (const t of currentState.teams) {
+                for (const f of ['password', 'spyPassword']) {
+                    if (String(t.id) === String(exceptTeamId) && f === exceptField) continue;
+                    if (String(t[f] || '') === pw) return `${t.name} ${f === 'spyPassword' ? '스파이' : '조원'} 비밀번호`;
+                }
             }
+            return null;
         }
 
         function addTeam() {
             const input = document.getElementById('new-team-name');
+            const pwInput = document.getElementById('new-team-password');
+            const spyInput = document.getElementById('new-team-spy-password');
             const val = input.value.trim();
-            if (!val) return;
-            currentState.teams.push({ id: String(Date.now()), name: val, score: 0 });
+            const pwVal = pwInput.value.trim();
+            const spyVal = spyInput.value.trim();
+            if (!val) return alert("팀명을 입력하세요.");
+            if (!pwVal || !spyVal) return alert("조원 비밀번호와 스파이 비밀번호를 모두 입력하세요.");
+            if (pwVal === spyVal) return alert("조원 비밀번호와 스파이 비밀번호는 서로 달라야 합니다.");
+            const dup = findPasswordOwner(pwVal) || findPasswordOwner(spyVal);
+            if (dup) return alert(`이미 사용 중인 비밀번호입니다 (${dup}).`);
+
+            currentState.teams.push({ id: String(Date.now()), name: val, score: 0, bonus: 0, password: pwVal, spyPassword: spyVal });
             input.value = '';
+            pwInput.value = '';
+            spyInput.value = '';
             updateDB();
         }
 
         function editTeamName(id, name) {
             const t = currentState.teams.find(x => String(x.id) === String(id));
-            if (t) {
+            if (t && name.trim()) {
                 t.name = name.trim();
                 updateDB();
             }
         }
 
+        function editTeamPassword(id, field, el) {
+            const t = currentState.teams.find(x => String(x.id) === String(id));
+            if (!t) return;
+            const pw = el.value.trim();
+            const label = field === 'spyPassword' ? '스파이' : '조원';
+            if (!pw) {
+                el.value = t[field] || '';
+                return alert(`${label} 비밀번호는 비워둘 수 없습니다.`);
+            }
+            const dup = findPasswordOwner(pw, id, field);
+            if (dup) {
+                el.value = t[field] || '';
+                return alert(`이미 사용 중인 비밀번호입니다 (${dup}).`);
+            }
+            t[field] = pw;
+            updateDB();
+        }
+
         function deleteTeam(id) {
-            if (!confirm("해당 팀을 삭제하시겠습니까?")) return;
-            updateDB(true);
+            if (!confirm("해당 팀을 삭제하시겠습니까? (게임 점수 입력값도 함께 삭제됩니다)")) return;
+            saveBackup();
             currentState.teams = currentState.teams.filter(x => String(x.id) !== String(id));
-            updateDB();
-        }
-
-        function addGame() {
-            const inputName = document.getElementById('new-game-name');
-            const inputMult = document.getElementById('new-game-multiplier');
-            const val = inputName.value.trim();
-            const mult = parseFloat(inputMult.value) || 1.0;
-            if (!val) return;
-
-            currentState.games.push({
-                id: String(Date.now()),
-                name: val,
-                multiplier: mult,
-                rank1: null,
-                rank2: null,
-                rank3: null,
-                record1: "",
-                record2: "",
-                record3: "",
-                calculated: false
-            });
-            inputName.value = '';
-            inputMult.value = '1.0';
-            updateDB();
-        }
-
-        function editGameName(id, name) {
-            const g = currentState.games.find(x => String(x.id) === String(id));
-            if (g) {
-                g.name = name.trim();
-                updateDB();
-            }
-        }
-
-        function editGameMultiplier(id, mult) {
-            const g = currentState.games.find(x => String(x.id) === String(id));
-            if (g) {
-                const parsed = parseFloat(mult);
-                g.multiplier = isNaN(parsed) || parsed < 0 ? 1.0 : parsed;
-                updateDB();
-            }
-        }
-
-        function deleteGame(id) {
-            if (!confirm("해당 게임을 삭제하시겠습니까?")) return;
-            updateDB(true);
-            currentState.games = currentState.games.filter(x => String(x.id) !== String(id));
+            currentState.games.forEach(g => { delete g.scores[id]; });
             updateDB();
         }
 
         function resetData() {
             if (!confirm("정말 모든 데이터를 기본값으로 초기화하시겠습니까? 이 작업은 이전 상태로 되돌릴 수 있습니다.")) return;
-            updateDB(true);
+            saveBackup();
             currentState = JSON.parse(JSON.stringify(defaultState));
+            lastMatrixSig = null;
             updateDB();
         }
     </script>
