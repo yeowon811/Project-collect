@@ -131,6 +131,17 @@
             transition: border-color 0.3s;
         }
 
+        .gpa-pair {
+            display: flex;
+            gap: 10px;
+            min-width: 0;
+        }
+
+            .gpa-pair .profile-field {
+                flex: 1 1 0;
+                min-width: 0;
+            }
+
             .profile-input:focus {
                 border-bottom-color: var(--primary-color);
                 outline: none;
@@ -824,7 +835,14 @@
                 font-size: 1.2rem;
                 font-weight: 300;
                 letter-spacing: 0.15em;
+                cursor: pointer;
+                user-select: none;
+                transition: color 0.2s;
             }
+
+                .month-nav h2:hover {
+                    color: var(--accent-color, #6366f1);
+                }
 
         .weekdays-grid {
             display: grid;
@@ -1271,9 +1289,15 @@
                         <label for="profSchool">학교 / 전공</label>
                         <input type="text" id="profSchool" class="profile-input" placeholder="컴퓨터학부">
                     </div>
-                    <div class="profile-field">
-                        <label for="profGpa">학점</label>
-                        <input type="text" id="profGpa" class="profile-input" placeholder=" ">
+                    <div class="gpa-pair">
+                        <div class="profile-field">
+                            <label for="profGpa">학점</label>
+                            <input type="text" id="profGpa" class="profile-input" placeholder="4.0">
+                        </div>
+                        <div class="profile-field">
+                            <label for="profMajorGpa">전공 학점</label>
+                            <input type="text" id="profMajorGpa" class="profile-input" placeholder="4.0">
+                        </div>
                     </div>
                 </div>
                 <div class="profile-field">
@@ -1366,7 +1390,7 @@
                 <h1>RECRUITMENT CALENDAR</h1>
             </div>
             <div class="controls">
-                <button class="btn-gear" id="jobFileSettingsToggleBtn" title="자소서 파일 수정/삭제 설정 토글">⚙</button>
+                <button class="btn-gear" id="jobFileSettingsToggleBtn" title="자소서 링크 등록/수정/삭제 설정 토글">⚙</button>
                 <button class="btn" id="openAddJobModalBtn">+ ADD JOB</button>
                 <button class="btn btn-danger" id="toggleDeleteModeBtn">DELETE</button>
                 <button class="btn btn-warning" id="resetAllBtn">RESET</button>
@@ -1384,7 +1408,7 @@
         <div class="calendar-container">
             <div class="month-nav">
                 <button class="btn" id="prevMonthBtn" style="border:none; padding:4px;">&lt; PREV</button>
-                <h2 id="calendarTitle">2026. 09</h2>
+                <h2 id="calendarTitle" title="클릭하면 이 달이 기본(처음 진입) 월로 고정됩니다">2026. 09</h2>
                 <button class="btn" id="nextMonthBtn" style="border:none; padding:4px;">NEXT &gt;</button>
             </div>
 
@@ -1429,6 +1453,20 @@
     <div class="modal-overlay" id="customModal">
         <div class="modal">
             <h3 id="modalCompanyTitle">공고 설정</h3>
+
+            <div class="form-group">
+                <label for="modalCompanyName">회사 이름 *</label>
+                <input type="text" id="modalCompanyName" placeholder="카카오, 네이버">
+            </div>
+            <div class="form-group">
+                <label for="modalEndDate">마감일 *</label>
+                <input type="date" id="modalEndDate">
+            </div>
+            <div class="form-group">
+                <label for="modalJobLink">회사명 클릭 이동 링크</label>
+                <input type="text" id="modalJobLink" placeholder="www.naver.com">
+            </div>
+
             <div class="form-group">
                 <label>중요도 색상 태그</label>
                 <div class="color-picker-group">
@@ -1527,14 +1565,16 @@
         const LANGS_STORAGE_KEY = "JOB_CALENDAR_USER_LANGS";
         const ACTIVITIES_STORAGE_KEY = "JOB_CALENDAR_USER_ACTIVITIES";
         const ACTIVITY_PANEL_OPEN_KEY = "JOB_CALENDAR_ACTIVITY_PANEL_OPEN";
+        const DEFAULT_MONTH_STORAGE_KEY = "JOB_CALENDAR_DEFAULT_MONTH"; // [추가] 캘린더 첫 진입 시 보여줄 기본 월
 
         let jobsData = [];
-        let currentDate = new Date(2026, 8, 1);
+        let currentDate = getInitialCalendarDate();
         let activeCustomId = null;
         let isDeleteMode = false;
-        let isJobFileEditMode = false; // [추가] 자소서 파일 수정/삭제 톱니바퀴 모드
+        let isJobFileEditMode = false; // [추가] 자소서 링크 등록/수정/삭제 톱니바퀴 모드
         let selectedJobIdsToDelete = new Set();
         let profileDebounceTimer = null;
+        let didApplyCloudDefaultMonth = false; // [추가] 클라우드의 기본 월 설정은 최초 1회만 적용
 
         const loadStatusEl = document.getElementById('loadStatus');
         const cloudStatusDot = document.getElementById('cloudStatusDot');
@@ -1747,7 +1787,7 @@
         }
 
         /* 1. 프로필 관리 */
-        const profileInputs = ['profName', 'profTarget', 'profSchool', 'profGpa', 'profPortfolio', 'profGithub'];
+        const profileInputs = ['profName', 'profTarget', 'profSchool', 'profGpa', 'profMajorGpa', 'profPortfolio', 'profGithub'];
 
         function updateProfileLinkButton(inputId, linkBtnId) {
             const input = document.getElementById(inputId);
@@ -2552,6 +2592,24 @@
             return `${job.company}_${job.endDate}_${job.link || ''}`;
         }
 
+        // [추가] 캘린더가 처음 열릴 때 보여줄 기본 월을 저장된 설정("YYYY-MM")에서 읽어온다.
+        function getStoredDefaultMonth() {
+            const raw = localStorage.getItem(DEFAULT_MONTH_STORAGE_KEY);
+            if (raw) {
+                const match = /^(\d{4})-(\d{2})$/.exec(raw);
+                if (match) {
+                    return { year: parseInt(match[1], 10), month: parseInt(match[2], 10) - 1 };
+                }
+            }
+            return null;
+        }
+
+        function getInitialCalendarDate() {
+            const stored = getStoredDefaultMonth();
+            if (stored) return new Date(stored.year, stored.month, 1);
+            return new Date(2026, 8, 1); // 설정된 값이 없으면 기존과 동일하게 2026년 9월을 기본값으로 사용
+        }
+
         jobsData = getSavedJobs();
 
         // [추가] 공고에 자소서/이력서 등 파일을 첨부 (증명서 첨부와 동일한 방식: 로컬 IndexedDB 저장 + 클라우드 업로드)
@@ -2606,6 +2664,30 @@
             renderCalendar();
         }
 
+        // [추가] W 버튼: 파일 업로드 대신 자소서/이력서 공유 링크를 입력/수정하는 방식
+        function promptJobLink(job, jobId) {
+            const current = job.fileUrl || '';
+            const input = window.prompt(`'${job.company}'의 자소서/이력서 링크를 입력하세요.\n(구글 드라이브, 노션 등 공유 링크)`, current);
+            if (input === null) return; // 취소
+
+            const trimmed = input.trim();
+            const formatted = trimmed ? normalizeUrl(trimmed) : '';
+
+            const jobIndex = jobsData.findIndex(j => getJobIdentifier(j) === jobId);
+            if (jobIndex === -1) return;
+
+            jobsData[jobIndex].fileUrl = formatted;
+            jobsData[jobIndex].hasLocalFile = false;
+            if (formatted) {
+                jobsData[jobIndex].fileName = '링크';
+            } else {
+                delete jobsData[jobIndex].fileName;
+            }
+
+            persistJobs(jobsData);
+            renderCalendar();
+        }
+
         document.getElementById('jsonFileInput').addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -2645,6 +2727,15 @@
         document.getElementById('nextMonthBtn').addEventListener('click', () => {
             currentDate.setMonth(currentDate.getMonth() + 1);
             renderCalendar();
+        });
+
+        // [추가] 캘린더 중앙의 "YYYY. MM" 제목을 클릭하면, 지금 보고 있는 월이
+        // 기본(처음 진입) 월로 바로 고정 저장된다. (다른 기기와도 동기화)
+        document.getElementById('calendarTitle').addEventListener('click', () => {
+            const value = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+            localStorage.setItem(DEFAULT_MONTH_STORAGE_KEY, value);
+            syncToFirebase({ defaultMonth: value });
+            alert(`기본 월이 ${currentDate.getFullYear()}년 ${currentDate.getMonth() + 1}월로 고정되었습니다.\n다음 접속부터 이 월로 시작합니다.`);
         });
 
         function formatDate(d) {
@@ -2851,77 +2942,55 @@
                     const actionsEl = document.createElement('div');
                     actionsEl.className = 'job-actions';
 
-                    // [수정] W 버튼: myword:// 프로토콜 연결 대신, 자격증처럼 파일을 직접 첨부하고
-                    // 이후에는 클릭 시 fileUrl 링크로 바로 접속하는 방식으로 변경
+                    // [수정] W 버튼: 파일 업로드 대신 자소서/이력서 공유 링크를 등록하는 방식으로 변경.
+                    // ⚙ 설정 모드가 켜져 있을 때 클릭하면 링크를 입력/수정할 수 있고,
+                    // 꺼져 있을 때 클릭하면 등록된 링크로 바로 이동한다.
                     const hasJobFile = !!(job.fileUrl || job.hasLocalFile);
 
                     const wordBtn = document.createElement('button');
                     wordBtn.className = 'job-btn job-btn-word' + (hasJobFile ? ' has-file' : ' empty');
                     wordBtn.textContent = 'W';
                     wordBtn.title = hasJobFile
-                        ? `자소서 파일 열기 (${job.fileName || '파일'})`
+                        ? (isJobFileEditMode
+                            ? `자소서 링크 수정 (${job.fileName || '링크'})`
+                            : `자소서 링크 열기 (${job.fileName || '링크'})`)
                         : (isJobFileEditMode
-                            ? `${job.company} 자소서 파일 첨부하기`
-                            : '파일을 첨부하려면 상단의 ⚙(설정) 버튼을 먼저 눌러주세요.');
-
-                    const jobFileInput = document.createElement('input');
-                    jobFileInput.type = 'file';
-                    jobFileInput.className = 'hidden-input';
-                    jobFileInput.accept = '.doc,.docx,.hwp,.hwpx,.pdf,.txt';
-                    jobFileInput.addEventListener('click', (e) => e.stopPropagation());
-                    jobFileInput.addEventListener('change', async (e) => {
-                        const file = e.target.files[0];
-                        if (!file) return;
-                        wordBtn.textContent = '⏳';
-                        await handleJobFileUpload(jobId, file);
-                    });
+                            ? `${job.company} 자소서 링크 등록하기`
+                            : '링크를 등록하려면 상단의 ⚙(설정) 버튼을 먼저 눌러주세요.');
 
                     wordBtn.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        if (hasJobFile) {
-                            // 파일이 등록되어 있으면 언제든 fileUrl 링크로 접속 가능
+                        if (isJobFileEditMode) {
+                            // 설정 모드가 켜져 있으면 언제든 링크를 입력/수정할 수 있음
+                            promptJobLink(job, jobId);
+                        } else if (hasJobFile) {
+                            // 설정 모드가 꺼져 있고 링크가 등록되어 있으면 바로 이동
                             openJobFile(job);
-                        } else if (isJobFileEditMode) {
-                            // 파일이 없을 때: 톱니바퀴 설정 모드에서만 파일 선택창 열림
-                            jobFileInput.click();
                         } else {
-                            alert('파일을 첨부하려면 상단의 ⚙(설정) 버튼을 먼저 눌러주세요.');
+                            alert('링크를 등록하려면 상단의 ⚙(설정) 버튼을 먼저 눌러주세요.');
                         }
                     });
 
                     actionsEl.appendChild(wordBtn);
 
-                    // [수정] 파일 변경/삭제 버튼은 ⚙ 설정(isJobFileEditMode)이 켜져 있을 때만 노출
+                    // [수정] 링크 삭제 버튼은 ⚙ 설정(isJobFileEditMode)이 켜져 있을 때만 노출
                     if (hasJobFile && isJobFileEditMode) {
-                        const changeFileBtn = document.createElement('button');
-                        changeFileBtn.className = 'cert-file-sub-btn';
-                        changeFileBtn.title = '자소서 파일 변경/재업로드';
-                        changeFileBtn.textContent = '↺';
-                        changeFileBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            jobFileInput.click();
-                        });
-
                         const delFileBtn = document.createElement('button');
                         delFileBtn.className = 'cert-file-sub-btn';
                         delFileBtn.style.color = 'var(--danger-color)';
-                        delFileBtn.title = '첨부 파일 삭제';
+                        delFileBtn.title = '등록된 링크 삭제';
                         delFileBtn.addEventListener('click', async (e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (confirm(`'${job.company}'에 첨부된 파일을 삭제하시겠습니까?`)) {
+                            if (confirm(`'${job.company}'에 등록된 링크를 삭제하시겠습니까?`)) {
                                 await deleteJobFile(job);
                             }
                         });
                         delFileBtn.textContent = '✕';
 
-                        actionsEl.appendChild(changeFileBtn);
                         actionsEl.appendChild(delFileBtn);
                     }
-
-                    actionsEl.appendChild(jobFileInput);
 
                     const editBtn = document.createElement('button');
                     editBtn.className = 'job-btn';
@@ -2998,6 +3067,9 @@
 
         const modal = document.getElementById('customModal');
         const modalTitle = document.getElementById('modalCompanyTitle');
+        const modalCompanyName = document.getElementById('modalCompanyName');
+        const modalEndDate = document.getElementById('modalEndDate');
+        const modalJobLink = document.getElementById('modalJobLink');
         const modalMemo = document.getElementById('modalMemo');
         const modalShowQuickLink = document.getElementById('modalShowQuickLink');
         const modalQuickLink = document.getElementById('modalQuickLink');
@@ -3015,6 +3087,11 @@
         function openCustomModal(job, jobId, currentCustom) {
             activeCustomId = jobId;
             modalTitle.textContent = `${job.company} 설정`;
+
+            modalCompanyName.value = job.company || '';
+            modalEndDate.value = job.endDate || '';
+            modalJobLink.value = job.link || '';
+
             modalMemo.value = currentCustom.memo || '';
             selectedColor = currentCustom.color || 'indigo';
 
@@ -3032,20 +3109,59 @@
             modal.classList.remove('active');
         });
 
-        document.getElementById('saveCustomBtn').addEventListener('click', () => {
+        document.getElementById('saveCustomBtn').addEventListener('click', async () => {
             if (!activeCustomId) return;
+
+            const jobIndex = jobsData.findIndex(j => getJobIdentifier(j) === activeCustomId);
+            if (jobIndex === -1) return;
+
+            const newCompany = modalCompanyName.value.trim();
+            const newEndDate = modalEndDate.value;
+            if (!newCompany || !newEndDate) {
+                alert('회사 이름과 마감일은 반드시 입력해야 합니다.');
+                return;
+            }
+            const rawJobLink = modalJobLink.value.trim();
+            const newLink = rawJobLink ? normalizeUrl(rawJobLink) : '';
+
+            const oldId = activeCustomId;
+
+            // [추가] 회사명/마감일/링크 수정 (ADD JOB으로 만든 값도 이후에 SET에서 수정 가능하도록)
+            jobsData[jobIndex].company = newCompany;
+            jobsData[jobIndex].endDate = newEndDate;
+            jobsData[jobIndex].link = newLink;
+
+            const newId = getJobIdentifier(jobsData[jobIndex]);
+
             const customMap = getSavedCustomizations();
             const rawQuickLink = modalQuickLink.value.trim();
             const formattedQuickLink = rawQuickLink ? normalizeUrl(rawQuickLink) : '';
 
-            customMap[activeCustomId] = {
+            const updatedCustom = {
                 color: selectedColor,
                 memo: modalMemo.value.trim(),
                 showQuickLink: modalShowQuickLink.checked,
                 quickLink: formattedQuickLink
             };
 
+            if (newId !== oldId) {
+                // [추가] 식별자가 바뀌면 커스터마이징/첨부 링크 정보도 새 식별자로 이전
+                delete customMap[oldId];
+
+                if (jobsData[jobIndex].hasLocalFile) {
+                    const record = await getFileFromIDB(oldId, JOB_FILES_STORE);
+                    if (record && record.file) {
+                        await saveFileToIDB(newId, record.file, record.fileName || jobsData[jobIndex].fileName, JOB_FILES_STORE);
+                    }
+                    await deleteFileFromIDB(oldId, JOB_FILES_STORE);
+                }
+            }
+            customMap[newId] = updatedCustom;
+
             saveCustomizations(customMap);
+            persistJobs(jobsData);
+
+            activeCustomId = newId;
             modal.classList.remove('active');
             renderCalendar();
         });
@@ -3113,17 +3229,32 @@
                         localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData.customizations));
                     }
 
+                    // [추가] 기본 월 설정은 다른 기기에서 아직 설정하지 않은 최초 접속일 때만
+                    // 클라우드 값을 적용해, 사용 중에 갑자기 월이 바뀌는 일이 없도록 한다.
+                    if (!didApplyCloudDefaultMonth) {
+                        didApplyCloudDefaultMonth = true;
+                        if (cloudData.defaultMonth && !localStorage.getItem(DEFAULT_MONTH_STORAGE_KEY)) {
+                            localStorage.setItem(DEFAULT_MONTH_STORAGE_KEY, cloudData.defaultMonth);
+                            const match = /^(\d{4})-(\d{2})$/.exec(cloudData.defaultMonth);
+                            if (match) {
+                                currentDate = new Date(parseInt(match[1], 10), parseInt(match[2], 10) - 1, 1);
+                            }
+                        }
+                    }
+
                     renderCalendar();
                     setCloudStatus(`클라우드 동기화 완료 (${jobsData.length}건)`, "online");
                 } else {
                     setCloudStatus("초기 데이터 클라우드 백업 중...", "syncing");
+                    didApplyCloudDefaultMonth = true;
                     syncToFirebase({
                         profile: JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY) || '{}'),
                         langs: getSavedLangs(),
                         certs: getSavedCerts(),
                         activities: getSavedActivities(),
                         jobs: getSavedJobs(),
-                        customizations: getSavedCustomizations()
+                        customizations: getSavedCustomizations(),
+                        defaultMonth: localStorage.getItem(DEFAULT_MONTH_STORAGE_KEY) || ''
                     });
                 }
             }, (error) => {
