@@ -328,20 +328,23 @@
             font-size: 0.72rem;
         }
 
-        /* [추가] 칸이 좁아 글자가 잘릴 때, 클릭하면 전체 텍스트를 풍선으로 보여줌 */
-        .cert-col-popover {
+        /* [수정] 칸이 좁아 글자가 잘릴 때, 클릭하면 전체 텍스트를 풍선으로 보여줌
+           - 목록 컨테이너(overflow-y:auto)와 셀(overflow:hidden)에 가려지지 않도록
+             body 바로 아래의 공용 풍선 하나를 position:fixed로 띄워서 사용한다.
+           - 배경은 --card-bg(transparent)가 아니라 모달과 동일하게 불투명한
+             --bg-color를 사용하고, 디자인도 사이트 전반의 각진 테두리 + 오프셋
+             그림자 스타일(.modal 참고)에 맞춰 통일했다. */
+        .cert-text-popover {
             display: none;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            z-index: 30;
-            margin-top: 4px;
-            padding: 6px 10px;
-            background: var(--card-bg, #fff);
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+            position: fixed;
+            z-index: 999;
+            padding: 10px 14px;
+            background: var(--bg-color);
+            border: 1px solid var(--text-main);
+            box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.12);
             font-size: 0.75rem;
             font-weight: 400;
+            line-height: 1.55;
             white-space: normal;
             word-break: break-all;
             max-width: 260px;
@@ -349,7 +352,7 @@
             color: var(--text-main);
         }
 
-            .cert-col-popover.show {
+            .cert-text-popover.show {
                 display: block;
             }
 
@@ -1555,6 +1558,9 @@
         </div>
     </div>
 
+    <!-- [추가] 자격증 목록에서 잘린 텍스트를 클릭했을 때 보여주는 공용 풍선 -->
+    <div id="certTextPopover" class="cert-text-popover"></div>
+
     <!-- Firebase SDK 및 메인 스크립트 -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -1870,6 +1876,37 @@
         let draggedIndex = null;
         let isCertEditMode = false;
 
+        // [추가] 자격증 목록 칸 클릭 시 전체 텍스트를 보여주는 공용 풍선
+        let activeCertPopoverCell = null;
+        const certTextPopoverEl = document.getElementById('certTextPopover');
+
+        function hideCertTextPopover() {
+            if (certTextPopoverEl) certTextPopoverEl.classList.remove('show');
+            activeCertPopoverCell = null;
+        }
+
+        function showCertTextPopover(cell) {
+            if (!certTextPopoverEl) return;
+            const rect = cell.getBoundingClientRect();
+            certTextPopoverEl.textContent = cell.dataset.full || '';
+            certTextPopoverEl.classList.add('show');
+
+            // 화면 밖으로 넘치지 않도록 위치 보정
+            const popoverWidth = Math.min(260, certTextPopoverEl.offsetWidth || 260);
+            let left = rect.left;
+            if (left + popoverWidth > window.innerWidth - 8) {
+                left = Math.max(8, window.innerWidth - popoverWidth - 8);
+            }
+            let top = rect.bottom + 4;
+            if (top + certTextPopoverEl.offsetHeight > window.innerHeight - 8) {
+                top = Math.max(8, rect.top - certTextPopoverEl.offsetHeight - 4);
+            }
+            certTextPopoverEl.style.left = `${left}px`;
+            certTextPopoverEl.style.top = `${top}px`;
+
+            activeCertPopoverCell = cell;
+        }
+
         const certSettingsToggleBtn = document.getElementById('certSettingsToggleBtn');
         certSettingsToggleBtn.addEventListener('click', () => {
             isCertEditMode = !isCertEditMode;
@@ -1934,10 +1971,10 @@
                         `;
                 } else {
                     rowHtml += `
-                            <span class="cert-col cert-col-name" data-full="${(item.name || '-').replace(/"/g, '&quot;')}">${item.name || '-'}<span class="cert-col-popover"></span></span>
-                            <span class="cert-col cert-col-sub" data-full="${(item.number || '-').replace(/"/g, '&quot;')}">${item.number || '-'}<span class="cert-col-popover"></span></span>
-                            <span class="cert-col cert-col-sub" data-full="${(item.date || '-').replace(/"/g, '&quot;')}">${item.date || '-'}<span class="cert-col-popover"></span></span>
-                            <span class="cert-col cert-col-sub" data-full="${(item.org || '-').replace(/"/g, '&quot;')}">${item.org || '-'}<span class="cert-col-popover"></span></span>
+                            <span class="cert-col cert-col-name" data-full="${(item.name || '-').replace(/"/g, '&quot;')}">${item.name || '-'}</span>
+                            <span class="cert-col cert-col-sub" data-full="${(item.number || '-').replace(/"/g, '&quot;')}">${item.number || '-'}</span>
+                            <span class="cert-col cert-col-sub" data-full="${(item.date || '-').replace(/"/g, '&quot;')}">${item.date || '-'}</span>
+                            <span class="cert-col cert-col-sub" data-full="${(item.org || '-').replace(/"/g, '&quot;')}">${item.org || '-'}</span>
                         `;
                 }
 
@@ -1991,17 +2028,15 @@
 
                 row.innerHTML = rowHtml;
 
-                // [추가] 칸이 좁아 글자가 잘릴 때, 클릭하면 전체 텍스트를 풍선으로 보여줌
+                // [수정] 칸이 좁아 글자가 잘릴 때, 클릭하면 전체 텍스트를 풍선으로 보여줌
+                // (목록 스크롤 영역/셀의 overflow:hidden에 가려지지 않도록 공용 풍선을 사용)
                 row.querySelectorAll('.cert-col[data-full]').forEach(cell => {
                     cell.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        const popover = cell.querySelector('.cert-col-popover');
-                        if (!popover) return;
-                        const willShow = !popover.classList.contains('show');
-                        document.querySelectorAll('.cert-col-popover.show').forEach(p => p.classList.remove('show'));
-                        if (willShow) {
-                            popover.textContent = cell.dataset.full;
-                            popover.classList.add('show');
+                        if (activeCertPopoverCell === cell) {
+                            hideCertTextPopover();
+                        } else {
+                            showCertTextPopover(cell);
                         }
                     });
                 });
@@ -3300,10 +3335,10 @@
             });
         }
 
-        // [추가] 자격증 칸 클릭으로 열린 전체 텍스트 풍선을, 다른 곳을 클릭하면 닫음
-        document.addEventListener('click', () => {
-            document.querySelectorAll('.cert-col-popover.show').forEach(p => p.classList.remove('show'));
-        });
+        // [추가] 자격증 칸 클릭으로 열린 전체 텍스트 풍선을, 다른 곳을 클릭하거나 스크롤하면 닫음
+        document.addEventListener('click', hideCertTextPopover);
+        window.addEventListener('scroll', hideCertTextPopover, true);
+        window.addEventListener('resize', hideCertTextPopover);
 
         // 초기 구동
         (async () => {
