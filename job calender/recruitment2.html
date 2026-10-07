@@ -1423,6 +1423,7 @@
                 <h1>RECRUITMENT CALENDAR</h1>
             </div>
             <div class="controls">
+                <button class="btn" id="authBtn">LOGIN</button>
                 <button class="btn-gear" id="jobFileSettingsToggleBtn" title="자소서 링크 등록/수정/삭제 설정 토글">⚙</button>
                 <button class="btn" id="openAddJobModalBtn">+ ADD JOB</button>
                 <button class="btn btn-danger" id="toggleDeleteModeBtn">DELETE</button>
@@ -1571,6 +1572,8 @@
         import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
         import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged }
+            from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyCMSudao64A2f_xSjDuOkSyzzwtg9QEm9w",
@@ -1588,6 +1591,11 @@
         const db = getFirestore(app);
         const storage = getStorage(app);
         const DASHBOARD_DOC_REF = doc(db, "resumes", "main_dashboard");
+
+        // [추가] Google 로그인 (Firestore/Storage 보안 규칙이 인증된 사용자만 허용하도록 강화됨)
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+        let unsubscribeSnapshot = null;
 
         // 로컬 키
         const STORAGE_KEY = "JOB_CALENDAR_CUSTOMIZATIONS";
@@ -1639,6 +1647,11 @@
         }
 
         async function syncToFirebase(partialData) {
+            // [추가] 로그인하지 않았으면 클라우드로 아무 요청도 보내지 않고 로컬에만 저장된 상태로 둔다.
+            if (!auth.currentUser) {
+                setCloudStatus("로그인 필요 (로컬에만 저장됨)", "error");
+                return;
+            }
             setCloudStatus("클라우드 저장 중...", "syncing");
             try {
                 const payload = { ...partialData };
@@ -1781,6 +1794,7 @@
 
         // Storage 비동기 업로드 (성공 시 URL 갱신)
         async function tryUploadToStorage(fileId, file) {
+            if (!auth.currentUser) return; // [추가] 로그인 전에는 Storage 업로드도 막음
             try {
                 const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
                 const fileRef = ref(storage, `certificates/${fileId}_${safeName}`);
@@ -1800,6 +1814,7 @@
 
         // [추가] 공고별 첨부 파일(자소서/이력서 등)을 Firebase Storage에 비동기 업로드
         async function tryUploadJobFileToStorage(jobId, file) {
+            if (!auth.currentUser) return; // [추가] 로그인 전에는 Storage 업로드도 막음
             try {
                 const safeId = jobId.replace(/[^a-zA-Z0-9._-]/g, '_');
                 const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
@@ -3257,7 +3272,7 @@
 
         /* 6. Firebase 실시간 데이터 구독 */
         function subscribeFirebase() {
-            onSnapshot(DASHBOARD_DOC_REF, (docSnap) => {
+            unsubscribeSnapshot = onSnapshot(DASHBOARD_DOC_REF, (docSnap) => {
                 if (docSnap.exists()) {
                     const cloudData = docSnap.data();
 
@@ -3348,7 +3363,15 @@
                 }
             }, (error) => {
                 console.error("Firestore 실시간 리스너 에러:", error);
-                setCloudStatus("동기화 권한 오류 (보안 규칙 확인)", "error");
+                // [추가] 보안 규칙에서 허용하지 않는 계정으로 로그인한 경우 안내 후 자동 로그아웃
+                if (error.code === 'permission-denied') {
+                    setCloudStatus("이 계정으로는 접근할 수 없습니다", "error");
+                    alert('이 계정으로는 접근할 수 없습니다. 올바른 Google 계정으로 다시 로그인해주세요.');
+                    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+                    signOut(auth);
+                } else {
+                    setCloudStatus("동기화 권한 오류 (보안 규칙 확인)", "error");
+                }
             });
         }
 
@@ -3372,7 +3395,39 @@
             renderCalendar();
 
             await cleanupExistingStorage();
-            subscribeFirebase();
+
+            // [추가] Google 로그인 버튼
+            const authBtn = document.getElementById('authBtn');
+            authBtn.addEventListener('click', async () => {
+                if (auth.currentUser) {
+                    if (confirm('로그아웃하시겠습니까?')) await signOut(auth);
+                    return;
+                }
+                try {
+                    await signInWithPopup(auth, provider);
+                } catch (e) {
+                    if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
+                        await signInWithRedirect(auth, provider);
+                    } else if (e.code !== 'auth/popup-closed-by-user') {
+                        console.error(e);
+                        alert('로그인 실패: ' + e.code);
+                    }
+                }
+            });
+
+            // [추가] 로그인 상태가 바뀔 때마다 동기화 시작/중지
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    authBtn.textContent = 'LOGOUT';
+                    authBtn.title = user.email;
+                    if (!unsubscribeSnapshot) subscribeFirebase();
+                } else {
+                    authBtn.textContent = 'LOGIN';
+                    authBtn.title = 'Google 계정으로 로그인';
+                    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+                    setCloudStatus("로그인 필요", "error");
+                }
+            });
         })();
     </script>
 </body>
