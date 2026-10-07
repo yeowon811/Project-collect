@@ -315,8 +315,12 @@
             min-width: 0;
             user-select: text;
             position: relative;
-            cursor: pointer;
         }
+
+            /* [추가] 실제로 글자가 잘린 칸에만 클릭 가능한 느낌(커서)을 줌 */
+            .cert-badge-row .cert-col.is-truncated {
+                cursor: pointer;
+            }
 
         .cert-badge-row .cert-col-name {
             font-weight: 400;
@@ -1907,6 +1911,15 @@
             activeCertPopoverCell = cell;
         }
 
+        // [추가] 자격증 목록 칸들을 돌면서 실제로 글자가 잘린 칸에만 is-truncated 클래스를 붙인다.
+        // (렌더링 직후, 그리고 창 크기가 바뀌어 잘림 여부가 달라질 수 있을 때 다시 호출)
+        function recalcCertTruncation() {
+            document.querySelectorAll('#certContainer .cert-col[data-full]').forEach(cell => {
+                const isTruncated = cell.scrollWidth > cell.clientWidth + 1;
+                cell.classList.toggle('is-truncated', isTruncated);
+            });
+        }
+
         const certSettingsToggleBtn = document.getElementById('certSettingsToggleBtn');
         certSettingsToggleBtn.addEventListener('click', () => {
             isCertEditMode = !isCertEditMode;
@@ -2028,11 +2041,12 @@
 
                 row.innerHTML = rowHtml;
 
-                // [수정] 칸이 좁아 글자가 잘릴 때, 클릭하면 전체 텍스트를 풍선으로 보여줌
+                // [수정] 칸이 좁아 글자가 실제로 잘린 경우에만, 클릭하면 전체 텍스트를 풍선으로 보여줌
                 // (목록 스크롤 영역/셀의 overflow:hidden에 가려지지 않도록 공용 풍선을 사용)
                 row.querySelectorAll('.cert-col[data-full]').forEach(cell => {
                     cell.addEventListener('click', (e) => {
                         e.stopPropagation();
+                        if (!cell.classList.contains('is-truncated')) return; // 안 잘린 칸은 무시
                         if (activeCertPopoverCell === cell) {
                             hideCertTextPopover();
                         } else {
@@ -2168,6 +2182,9 @@
 
                 container.appendChild(row);
             });
+
+            // [추가] 모든 행이 그려진 뒤, 실제로 글자가 잘린 칸만 클릭 가능하게 표시
+            recalcCertTruncation();
         }
 
         const newCertFileInput = document.getElementById('newCertFileInput');
@@ -3338,7 +3355,10 @@
         // [추가] 자격증 칸 클릭으로 열린 전체 텍스트 풍선을, 다른 곳을 클릭하거나 스크롤하면 닫음
         document.addEventListener('click', hideCertTextPopover);
         window.addEventListener('scroll', hideCertTextPopover, true);
-        window.addEventListener('resize', hideCertTextPopover);
+        window.addEventListener('resize', () => {
+            hideCertTextPopover();
+            recalcCertTruncation(); // 창 크기가 바뀌면 잘림 여부도 다시 계산
+        });
 
         // 초기 구동
         (async () => {
