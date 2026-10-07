@@ -3363,15 +3363,15 @@
                 }
             }, (error) => {
                 console.error("Firestore 실시간 리스너 에러:", error);
-                // [추가] 보안 규칙에서 허용하지 않는 계정으로 로그인한 경우 안내 후 자동 로그아웃
+                setCloudStatus("동기화 권한 오류 (보안 규칙 확인)", "error");
+                // [수정] 보안 규칙에서 허용하지 않는 계정으로 로그인한 경우 안내만 하고,
+                // 강제로 로그아웃시키지는 않는다. (자동 로그아웃 → 재로그인 시도 → 동일 오류
+                // 가 반복되며 "계속 오류가 발생"하는 것처럼 보이는 문제를 방지)
                 if (error.code === 'permission-denied') {
                     setCloudStatus("이 계정으로는 접근할 수 없습니다", "error");
-                    alert('이 계정으로는 접근할 수 없습니다. 올바른 Google 계정으로 다시 로그인해주세요.');
-                    if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
-                    signOut(auth);
-                } else {
-                    setCloudStatus("동기화 권한 오류 (보안 규칙 확인)", "error");
+                    alert('이 계정으로는 데이터에 접근할 수 없습니다.\n등록된 Google 계정으로 로그인했는지 확인해주세요.');
                 }
+                unsubscribeSnapshot = null;
             });
         }
 
@@ -3398,20 +3398,36 @@
 
             // [추가] Google 로그인 버튼
             const authBtn = document.getElementById('authBtn');
+            let isAuthInProgress = false; // [추가] 연속 클릭으로 팝업 요청이 중복/취소되는 것 방지
             authBtn.addEventListener('click', async () => {
                 if (auth.currentUser) {
                     if (confirm('로그아웃하시겠습니까?')) await signOut(auth);
                     return;
                 }
+                if (isAuthInProgress) return; // 이미 로그인 창을 여는 중이면 무시
+                isAuthInProgress = true;
+                authBtn.disabled = true;
                 try {
                     await signInWithPopup(auth, provider);
                 } catch (e) {
                     if (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment') {
-                        await signInWithRedirect(auth, provider);
-                    } else if (e.code !== 'auth/popup-closed-by-user') {
+                        try {
+                            await signInWithRedirect(auth, provider);
+                        } catch (e2) {
+                            console.error(e2);
+                        }
+                    } else if (
+                        // [추가] 사용자가 창을 닫았거나, 연속 클릭 등으로 팝업 요청이 취소된 경우는
+                        // 실제 오류가 아니므로 경고창을 띄우지 않고 조용히 무시한다.
+                        e.code !== 'auth/popup-closed-by-user' &&
+                        e.code !== 'auth/cancelled-popup-request'
+                    ) {
                         console.error(e);
                         alert('로그인 실패: ' + e.code);
                     }
+                } finally {
+                    isAuthInProgress = false;
+                    authBtn.disabled = false;
                 }
             });
 
